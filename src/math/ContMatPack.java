@@ -4,6 +4,7 @@
  */
 package math;
 
+import java.io.IOException;
 import net.sf.javaml.utils.*;
 import jsc.combinatorics.*;
 import jsc.contingencytables.ChiSquaredTest;
@@ -30,37 +31,37 @@ public class ContMatPack {
     private double chisq;
     private double pvalue;
     private boolean gotpvalue;
-    
+    public double pchi;
     public ContMatPack(double[][] data)
     {
-        nrows = data.length;
-        ncols = data[0].length;
-        rowtotals = new int[nrows];
-        coltotals = new int[ncols];
- 
-        // Get row totals and number of all counts
-        nall = 0;
-        for(int i=0;i<nrows;i++)
-        {
-            rowtotals[i] = 0;
-            for(int j=0;j<ncols;j++)
-            {
-                rowtotals[i] += data[i][j];
-            }
-            nall += rowtotals[i];
-        }
-        // Make column totals
-        for(int j=0;j<ncols;j++)
-        {
-            coltotals[j] = 0;
-            for(int i=0;i<nrows;i++)
-            {
-                coltotals[j] += data[i][j];
-            }
-        }
-        
+//        nrows = data.length;
+//        ncols = data[0].length;
+//        rowtotals = new int[nrows];
+//        coltotals = new int[ncols];
+// 
+//        // Get row totals and number of all counts
+//        nall = 0;
+//        for(int i=0;i<nrows;i++)
+//        {
+//            rowtotals[i] = 0;
+//            for(int j=0;j<ncols;j++)
+//            {
+//                rowtotals[i] += data[i][j];
+//            }
+//            nall += rowtotals[i];
+//        }
+//        // Make column totals
+//        for(int j=0;j<ncols;j++)
+//        {
+//            coltotals[j] = 0;
+//            for(int i=0;i<nrows;i++)
+//            {
+//                coltotals[j] += data[i][j];
+//            }
+//        }
+//        
         matrix = data;
-        chisq = ContingencyTables.chiVal(matrix, false);
+        pchi = ContingencyTables.chiSquared(matrix, false);
         
         /*
         ContingencyTable ctbl = new ContingencyTable(data);
@@ -228,7 +229,6 @@ public class ContMatPack {
             if(mychisq >= chisq_orig) { larger_random++; }
         }
         pvalue = (double)larger_random/numiters;
-        
         return pvalue;
     }
     
@@ -272,7 +272,7 @@ public class ContMatPack {
         int [] rtotals = new int[2];
         int [] ctotals = new int[ncolumns];
         int [] newcolorder;
-        Hypergeometric hgm;
+        Hypergeometric hgm = new Hypergeometric(3,10,4);
         
         // Get row and column totals
         for(int i=0;i<2;i++)
@@ -320,11 +320,15 @@ public class ContMatPack {
                 }
                 else
                 {
+                    if(ctotals[icol] == 0) continue;
+                    System.out.println(ctotals[icol]);
+                    System.out.println("\n\n");
                     hgm = new Hypergeometric(ctotals[icol],nwhite+nblack,nwhite);
                     nwhite_new = (int)hgm.random();
+
                 }
                 
-                //System.out.println("icol "+icol);
+//                System.out.println("icol "+icol);
                 mat[0][icol] = nwhite_new;
                 mat[1][icol] = ctotals[icol] -mat[0][icol];
                 nwhite -=mat[0][icol];
