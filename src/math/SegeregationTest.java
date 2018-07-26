@@ -22,46 +22,59 @@ public class SegeregationTest {
     }
     private void getST(String inFile, String outFile){
         try {
+            System.out.println(">>>>>>>>>>>>>>>>Segregation test filter<<<<<<<<<<<<<<<<<");
             BufferedReader br;
             BufferedWriter bw;
             if(inFile.endsWith(".gz")) br = IOUtils.getTextGzipReader(inFile);
             else br = IOUtils.getTextReader(inFile);
             String temp ;
             bw = IOUtils.getTextWriter(outFile);
+            int snp = 0, rmsnp = 0;
             while ((temp = br.readLine())!=null){
                 if(temp.startsWith("#")){
                     bw.write(temp);
                     bw.newLine();
                 }else{
+                    snp ++;
+                    if (snp % 100000==0){
+                        System.out.println("Analyzing\t"+Integer.toString(snp)+"\t");
+                    }
                     String[] te = temp.split("\t");
                     int s = te.length;
                     double[][] depth = new double[2][s-9];
                     for (int i = 0; i < te.length-9; i++){
-                        if(te[i+9].equals("./.")) {
-                            depth[1][i] = Double.NaN;
-                            depth[2][i] = Double.NaN;
+                        if(te[i+9].startsWith(".")) {       
+                            depth[0][i] = 0;
+                            depth[1][i] = 0;
                         }
                         else{
                             String[] de = te[i+9].split(":")[1].split(",");
+//                            if(de[0].equals(".")) System.out.println(te[i+9]);
                             depth[0][i] = Double.parseDouble(de[0]);
                             depth[1][i] = Double.parseDouble(de[1]);
                             
                         }
                     }
                     ContMatPack dpt = new ContMatPack(depth);
-                    
                     double pv = dpt.pchi;
                     if(pv < 0.2){
-                        pv = dpt.pvalue(depth);
+                        if(pv > 0.0001){
+                             pv = dpt.pvalue(depth);
+                        }
                         if(pv < 0.01){
                             bw.write(temp);
                             bw.newLine();
+                        }else{
+                            rmsnp++;
                         }
                     }else{
+                        rmsnp++;
                         continue;
                     }
                 }
             }
+            System.out.println("Total SNPs:\t"+snp);
+            System.out.println("SNPs removed:\t"+rmsnp);
             bw.flush();
             bw.close();
         } catch (IOException ex) {

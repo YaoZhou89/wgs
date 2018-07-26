@@ -15,10 +15,12 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStreamWriter;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+import static net.maizegenetics.plugindef.Plugin.myLogger;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -189,4 +191,35 @@ public class IOUtils {
     static BufferedReader getTextGzipReader(File file) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+    public static BufferedReader getBufferedReader(String inSourceName) {
+        return getBufferedReader(inSourceName, 8192);
+    }
+
+    public static BufferedReader getBufferedReader(String inSourceName, int bufSize) {
+
+        try {
+            if (bufSize < 1) {
+                return getBufferedReader(inSourceName);
+            } else if (inSourceName.startsWith("http")) {
+                if (inSourceName.endsWith(".gz")) {
+                    return new BufferedReader(new InputStreamReader(new GZIPInputStream((new URL(inSourceName)).openStream(), bufSize)), bufSize);
+                } else {
+                    return new BufferedReader(new InputStreamReader((new URL(inSourceName)).openStream()), bufSize);
+                }
+            } else if (inSourceName.endsWith(".gz")) {
+                return new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(inSourceName), bufSize)), bufSize);
+            } else {
+                return new BufferedReader(new InputStreamReader(new FileInputStream(inSourceName)), bufSize);
+            }
+        } catch (Exception e) {
+            myLogger.error("getBufferedReader: Error getting reader for: " + inSourceName);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static BufferedReader getBufferedReader(File file, int bufSize) {
+        return getBufferedReader(file.getAbsolutePath(), bufSize);
+    }
+
 }

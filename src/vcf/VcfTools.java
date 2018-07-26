@@ -64,7 +64,20 @@ public class VcfTools {
         if(model.equals("DPRankSum")){
             this.filterByDPRankSum(inFile,outFile);
         }
+        
     }
+    public VcfTools(String inFile, String outFile, String suffix ){
+        this.mergeVCF(inFile,outFile,suffix);
+    }
+    public VcfTools(String anchor, String inFile, String outFile, int minComp, double maxIBDDist, 
+        int windowSize, int numThreads, int bestContrasts){
+        ibdfilter.PfilterBasedOnIBD(anchor, inFile, outFile, minComp, maxIBDDist, windowSize, numThreads, bestContrasts);
+    }
+    public VcfTools(String inFile, String outFile,int windowSize, double threshold){   
+        LDFilter.calLD(inFile,outFile,windowSize,threshold);
+    }
+     
+   
     // type : filtered
     // parameters: MQ, FS, MQRankSum, and ReadPosRankSum
     public VcfTools(String inFile,String outFile,String MQ,String FS,String MQRankSum,String ReadPosRankSum,String BSQRankSum){
@@ -78,6 +91,42 @@ public class VcfTools {
         int mindepth,int maxdepth,int dim){
         this.dim = dim;
         this.getDepthFilterd(inFile,outFile,a,b,sd,mindepth,maxdepth);
+    }
+    
+    public void mergeVCF(String inFile, String outFile, String suffix){
+        BufferedReader br;
+        BufferedWriter bw;
+        File test = new File (inFile);
+        File[] fs = IOUtils.listRecursiveFiles(test);
+//        File[] fs = YaoIOUtils.listRecursiveFiles(new File(path));
+        File[] subFs = IOUtils.listFilesEndsWith(fs, suffix);
+        try{
+            if(outFile.endsWith(".gz"))  bw = IOUtils.getTextGzipWriter(outFile);
+            else bw = IOUtils.getTextWriter(outFile);
+            boolean head = true;
+            for (File f : subFs){
+                br = IOUtils.getTextReader(f.toString());
+                String temp = "";
+                while((temp = br.readLine())!=null){
+                    if(temp.startsWith("#")){
+                        if(head) {
+                            bw.write(temp);
+                            bw.newLine();
+                        }
+                    }else{
+                       head = false;
+                       bw.write(temp); 
+                       bw.newLine();
+                       bw.flush();
+                    }
+                }
+                br.close();
+            }
+            bw.flush();
+            bw.close();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
     private void filterByDPRankSum(String inFile, String outFile){
         

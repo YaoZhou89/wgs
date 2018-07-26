@@ -117,7 +117,7 @@ public class ContMatPack {
         }
         else
         {
-            System.out.println("Swithing to simulation");
+//            System.out.println("Swithing to simulation");
             pv = SimulatePvalueHG(mat,1000);
         }
         return pv;
@@ -320,12 +320,16 @@ public class ContMatPack {
                 }
                 else
                 {
-                    if(ctotals[icol] == 0) continue;
-                    System.out.println(ctotals[icol]);
-                    System.out.println("\n\n");
-                    hgm = new Hypergeometric(ctotals[icol],nwhite+nblack,nwhite);
-                    nwhite_new = (int)hgm.random();
-
+                    if(ctotals[icol] == 0) {
+                        nwhite_new = 0;
+                    }else if(ctotals[icol]==nwhite+nblack){
+                        nwhite_new = ctotals[icol];
+                    }else{
+//                        System.out.println(ctotals[icol]);
+                        hgm = new Hypergeometric(ctotals[icol],nwhite+nblack,nwhite);
+                        nwhite_new = (int)hgm.random();
+                    }
+                    
                 }
                 
 //                System.out.println("icol "+icol);

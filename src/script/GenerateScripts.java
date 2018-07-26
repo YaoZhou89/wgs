@@ -49,6 +49,12 @@ public class GenerateScripts {
         if(model.equals("model10")){
             this.getS();
         }
+        if(model.equals("model11")){
+            this.makeDir(inFile);
+        }
+        if(model.equals("model12")){
+            this.getConf(inFile,outFile);
+        }
     }
     public void getRScripts(){
          BufferedWriter bw = IOUtils.getTextWriter("scripts.sh");
@@ -131,7 +137,7 @@ public class GenerateScripts {
                 ex.printStackTrace();
         }
     }
-     public void getVar(String inFile,String outFile){
+    public void getVar(String inFile,String outFile){
         StringBuilder header = new StringBuilder();
         header.append("#!/bin/bash\n");
         File dir = new File(outFile+"/Scripts_ref");
@@ -213,7 +219,7 @@ public class GenerateScripts {
                 ex.printStackTrace();
         }
     }
-     public void getBamIndex(String inFile, String outFile){
+    public void getBamIndex(String inFile, String outFile){
         StringBuilder header = new StringBuilder();
         header.append("#!/bin/bash\n");
         File dir = new File(outFile+"/Scripts_lyc");
@@ -429,6 +435,75 @@ public class GenerateScripts {
             bws.close();
         } catch (IOException ex) {
                 ex.printStackTrace();
+        }
+    }
+    public void makeDir(String inFile){
+        
+//        File Bamdir = new File(outFile+"/ref_bam");
+//        if(!Bamdir.exists()) Bamdir.mkdir();
+        File test = new File (inFile);
+        File[] fs = IOUtils.listRecursiveFiles(test);
+        File[] subFs = IOUtils.listFilesEndsWith(fs, ".fa");
+//        try {
+            for(File entry : subFs){
+                String name = entry.toString();
+                String d = name.split(".fa")[0];
+                File dir = new File(d);
+                if(!dir.exists()) dir.mkdir();
+            }
+            
+//        } 
+    }
+    private void getConf(String inFile,String outFile){
+        StringBuilder header = new StringBuilder("GENETIC_CODE_TABLE=1\n" +
+            "GENETIC_CODE_TABLENAME=Standard\n" +
+            "MITO_GENETIC_CODE_TABLE=2\n" +
+            "MITO_GENETIC_CODE_TABLENAME=Vertebrate Mitochondrial\n" +
+            "\n" );
+        String end ="# DBSNP_VCF_FILE=Homo_sapiens.vcf.gz\n" +
+                    "#Running SIFT 4G\n" +
+                    "SIFT4G_PATH=~/software/sift4g/bin/sift4g\n" +
+                    "PROTEIN_DB=~/data/uniref90/uniref90.fasta\n" +
+                    "COMPUTER=Lulab2\n" +
+                    "\n" +
+                    "# Sub-directories, don't need to change\n" +
+                    "GENE_DOWNLOAD_DEST=gene-annotation-src\n" +
+                    "CHR_DOWNLOAD_DEST=chr-src\n" +
+                    "LOGFILE=Log.txt\n" +
+                    "ZLOGFILE=Log2.txt\n" +
+                    "FASTA_DIR=fasta\n" +
+                    "SUBST_DIR=subst\n" +
+                    "ALIGN_DIR=SIFT_alignments\n" +
+                    "SIFT_SCORE_DIR=SIFT_predictions\n" +
+                    "SINGLE_REC_BY_CHR_DIR=singleRecords\n" +
+                    "SINGLE_REC_WITH_SIFTSCORE_DIR=singleRecords_with_scores\n" +
+                    "DBSNP_DIR=dbSNP\n" +
+                    "\n" +
+                    "# Doesn't need to change\n" +
+                    "FASTA_LOG=fasta.log\n" +
+                    "INVALID_LOG=invalid.log\n" +
+                    "PEPTIDE_LOG=peptide.log\n" +
+                    "ENS_PATTERN=ENS\n" +
+                    "SINGLE_RECORD_PATTERN=:change:_aa1valid_dbsnp.singleRecord\n";
+        
+        for(int i = 0; i < 43; i++){
+            StringBuilder m = new StringBuilder( "PARENT_DIR=/data1/home/yaozhou/data/ref/wheat/SIFT/byChr/chr"
+                    + String.format("%03d", i)+"\n"+
+                "ORG=wheat\n" +
+                "ORG_VERSION=iwgsc_v1.0_chr"+String.format("%03d", i));
+            m.append("\n");
+            String out = outFile+"/chr"+String.format("%03d", i)+"_config.txt";
+            BufferedWriter bw = IOUtils.getTextWriter(out);
+            try {
+                bw.write(header.toString());
+                bw.write(m.toString());
+                bw.write(end);
+                bw.flush();
+                bw.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+            
         }
     }
 }

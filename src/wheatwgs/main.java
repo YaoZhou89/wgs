@@ -5,7 +5,11 @@
  */
 package wheatwgs;
 
+import gff.modifyGTF;
+import gff.splitByChr;
 import math.SegeregationTest;
+import script.GenerateScripts;
+import vcf.VcfTools;
 
 /**
  *
@@ -35,6 +39,10 @@ public class main {
         int maxdepth = 0,mindepth = 0;
         int header = 49, subnum = 1000000;
         String type = "null";
+        String anchor = "",suffix=".vcf";
+        int numThreads = 4, minComp = 200,windowSize = 2000,bestContrasts = -1;
+        double maxIBDDist = 0.02, threshold = 0.1;
+        
         String MQ = "40", FS= "10", MQRankSum = "-8", ReadPosRankSum ="-12.5",BSQRankSum="0";
         for (int i = 0; i < len; i++){
             if (null != args[i])switch (args[i]) {
@@ -159,6 +167,34 @@ public class main {
                     BSQRankSum = args[i+1];
                     i++;
                     break;
+                case "--anchorFile":
+                    anchor = args[i+1];
+                    i++;
+                    break;
+                case "--minComp":
+                    minComp = Integer.parseInt(args[i+1]);
+                    i++;
+                    break;
+                case "--maxIBDDist":
+                    maxIBDDist = Double.parseDouble(args[i+1]) ;
+                    i++;
+                    break;
+                case "--windowSize":
+                    windowSize = Integer.parseInt(args[i+1]);
+                    i++;
+                    break;
+                case "--bestContrasts":
+                    bestContrasts = Integer.parseInt(args[i+1]);
+                    i++;
+                    break;
+                case "--threshold":
+                    threshold = Double.parseDouble(args[i+1]);
+                    i++;
+                    break;
+                case "--suffix":
+                    suffix =args[i+1];
+                    i++;
+                    break;
                 default:
                     break;
             }
@@ -171,7 +207,25 @@ public class main {
             // Segeragation test
             if(type.equals("ST")){
                 new SegeregationTest(inFile,outFile);
+            }else if(type.equals("IBDfilter")){
+                new VcfTools(anchor, inFile, outFile, minComp, maxIBDDist, windowSize, numThreads, bestContrasts);
+            }else if(type.equals("LDfilter")){
+                new VcfTools(inFile,outFile,windowSize,threshold);
+            }else if(type.equals("merge")){
+                new VcfTools(inFile,outFile,suffix);
             }
+        }
+        if(model.equals("gff")){
+            if(type.equals("modifyGTF")){
+                new modifyGTF(inFile,outFile);
+            }else if(type.equals("changeCoordinate")){
+                new modifyGTF(inFile,outFile,inFile2);
+            }else if(type.equals("splitByChr")){
+                new splitByChr(inFile);
+            }
+        }
+        if(model.equals("GenerateScripts")){
+            new GenerateScripts(inFile,outFile,type);
         }
         long endTime = System.currentTimeMillis();
         int timeLast = (int) ((endTime-startTime)/1000);
