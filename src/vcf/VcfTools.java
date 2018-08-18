@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import math.SegeregationTest;
+import htsjdk.tribble.readers.TabixReader;
 //import java.lang.Object;
 //import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.inference.WilcoxonSignedRankTest;
@@ -28,47 +30,45 @@ import org.apache.commons.math3.stat.inference.WilcoxonSignedRankTest;
  * @author yaozhou
  */
 public class VcfTools {
-    int dim = 500;
+    int SNPsAll = 0;
+    int SNPsFail = 0;
     public VcfTools(String inFile,String outFile){
         this.getABD(inFile,outFile);
     }
     public VcfTools(String inFile,Integer ExSize){
         this.splitByChr(inFile,ExSize);
     }
-    public VcfTools(String inFile,String outFile,String model,int dim){
-        this.dim = dim;
+    public VcfTools(String inFile,String outFile,String model,double se){
         if(model.equals("depth")){
             this.getDepthAll(inFile,outFile);
-        }
+        }else
         if(model.equals("het")){
             this.getHet(inFile,outFile);
-        }
+        }else
         if(model.equals("maf")){
             this.getMAF(inFile);
-        }
+        }else
         if(model.equals("MQ")){
             this.getMQ(inFile);
-        }
+        }else
         if(model.equals("GQ")){
             this.getGQ(inFile);
-        }
+        }else
         if(model.equals("eachDepth")){
             this.getDepthAll(inFile,outFile);
-        }
+        }else
         if(model.equals("vcfToStructure")){
             this.getStructure(inFile);
-        }
+        }else
         if(model.equals("vcfToXPCLR")){
             this.getXPCLR(inFile);
-        }
-        if(model.equals("DPRankSum")){
-            this.filterByDPRankSum(inFile,outFile);
+        }else if(model.equals("dpfilter")){
+            this.dpFilter(inFile, outFile,se);
         }
         
+        
     }
-    public VcfTools(String inFile, String outFile, String suffix ){
-        this.mergeVCF(inFile,outFile,suffix);
-    }
+
     public VcfTools(String anchor, String inFile, String outFile, int minComp, double maxIBDDist, 
         int windowSize, int numThreads, int bestContrasts){
         ibdfilter.PfilterBasedOnIBD(anchor, inFile, outFile, minComp, maxIBDDist, windowSize, numThreads, bestContrasts);
@@ -76,37 +76,77 @@ public class VcfTools {
     public VcfTools(String inFile, String outFile,int windowSize, double threshold){   
         LDFilter.calLD(inFile,outFile,windowSize,threshold);
     }
-     
+    public VcfTools(String inFile,String outFile,double se,String suffix){
+        this.rsdFilter(inFile,outFile,se,suffix);
+    }
    
     // type : filtered
     // parameters: MQ, FS, MQRankSum, and ReadPosRankSum
-    public VcfTools(String inFile,String outFile,String MQ,String FS,String MQRankSum,String ReadPosRankSum,String BSQRankSum){
-        this.getFilterd(inFile,outFile,MQ,FS,MQRankSum, ReadPosRankSum,BSQRankSum);
-    }
- 
-    public VcfTools(String inFile,String outFile,String model,int size,int SNPnum,int header){
-        this.getSub(inFile,outFile,size,SNPnum,header);
-    }
-    public VcfTools(String inFile,String outFile, double a, double b, double sd,
-        int mindepth,int maxdepth,int dim){
-        this.dim = dim;
-        this.getDepthFilterd(inFile,outFile,a,b,sd,mindepth,maxdepth);
+    public VcfTools(String inFile,String outFile,String MQ,String FS,String MQRankSum,String ReadPosRankSum,String BSQRankSum,String SOR){
+        this.getFilterd(inFile,outFile,MQ,FS,MQRankSum, ReadPosRankSum,BSQRankSum,SOR);
     }
     
-    public void mergeVCF(String inFile, String outFile, String suffix){
-        BufferedReader br;
-        BufferedWriter bw;
-        File test = new File (inFile);
-        File[] fs = IOUtils.listRecursiveFiles(test);
-//        File[] fs = YaoIOUtils.listRecursiveFiles(new File(path));
-        File[] subFs = IOUtils.listFilesEndsWith(fs, suffix);
+//    public VcfTools(String inFile,String outFile,String model,int size,int SNPnum,int header){
+//        this.getSub(inFile,outFile,size,SNPnum);
+//    }
+    public VcfTools(String inFile,String outFile, double a, double b, double sd,
+        int mindepth,int maxdepth){
+        this.getDepthFilterd(inFile,outFile,a,b,sd,mindepth,maxdepth);
+    }
+    public VcfTools(String inFile, String suffix,String outsuffix,
+            String MQ,String FS,String MQRankSum,String ReadPosRankSum,String BSQRankSum,
+            String SOR,int maxdepth, int mindepth, double maxSD, int windowSize,
+            double threshold){
         try{
-            if(outFile.endsWith(".gz"))  bw = IOUtils.getTextGzipWriter(outFile);
-            else bw = IOUtils.getTextWriter(outFile);
+            String anchor = inFile.replace(suffix,".anchor.vcf");
+            BufferedWriter bw = IOUtils.getTextWriter(inFile.replace(".vcf",".txt"));
+            String outFile = inFile.replace(".vcf",".quality"+MQ+".vcf");
+            this.getFilterd(inFile,outFile,MQ,FS,MQRankSum, ReadPosRankSum,BSQRankSum,SOR);
+            bw.write(SNPsAll+"\t"+SNPsFail);
+            bw.newLine();
+            bw.flush();
+            inFile = outFile;
+            outFile = inFile.replace(".quality"+MQ+".vcf",".depth"+MQ+".vcf");
+            this.getDepthFilterd(inFile,outFile,0,0,maxSD,mindepth,maxdepth);
+            bw.write(SNPsAll+"\t"+SNPsFail);
+            bw.newLine();
+            bw.flush();
+            inFile = outFile;
+            outFile = inFile.replace(".depth"+MQ+".vcf",".ST"+MQ+".vcf");
+            Integer[] SNPnum = new SegeregationTest().getST(inFile,outFile);
+            bw.write(SNPnum[0]+"\t"+SNPnum[1]);
+            bw.newLine();
+            bw.flush();
+            inFile = outFile;
+            outFile = inFile.replace(".ST"+MQ+".vcf",".LD"+MQ+".vcf");
+            SNPnum = LDFilter.calLD(inFile,outFile,windowSize,0.1);
+            bw.write(SNPnum[0]+"\t"+SNPnum[1]);
+            bw.newLine();
+            bw.flush();
+            inFile = outFile;
+            outFile = inFile.replace(".LD"+MQ+".vcf",".IBD"+MQ+".vcf");
+            
+            ibdfilter.PfilterBasedOnIBD(anchor, inFile, outFile, 200, 0.03, windowSize, 4, -1);
+            bw.close();
+        }catch(Exception e){
+            
+        }
+    }
+    public static void mergeVCF(String inFile, String outFile){
+        BufferedReader br,br1;
+        BufferedWriter bw;
+//        StringBuilder files = new StringBuilder();
+//        File[] fs = YaoIOUtils.listRecursiveFiles(new File(path));
+        int i = 0;
+        try{
+            bw = IOUtils.getTextWriter(outFile);
+            String temp = "", file=null;
+            String[] te = null;
+            br1 = IOUtils.getTextReader(inFile);
             boolean head = true;
-            for (File f : subFs){
-                br = IOUtils.getTextReader(f.toString());
-                String temp = "";
+            while ((file = br1.readLine())!=null){
+                br = IOUtils.getTextReader(file);
+                System.out.println("Reading "+ file);
                 while((temp = br.readLine())!=null){
                     if(temp.startsWith("#")){
                         if(head) {
@@ -114,40 +154,156 @@ public class VcfTools {
                             bw.newLine();
                         }
                     }else{
+                       i++;
                        head = false;
                        bw.write(temp); 
                        bw.newLine();
                        bw.flush();
                     }
                 }
-                br.close();
+                br.close(); 
             }
+            System.out.println("Total SNPs is : "+i);
             bw.flush();
             bw.close();
         }catch (Exception e){
             e.printStackTrace();
         }
     }
-    private void filterByDPRankSum(String inFile, String outFile){
-        
+    
+    public static void subChr(String inFile,String chr,String outFile){
         try {
-            BufferedReader br ;
-            if(inFile.endsWith(".gz")) br = IOUtils.getTextGzipReader(inFile);
-            else br = IOUtils.getTextReader(inFile);
-            String temp ;
+            TabixReader br = new TabixReader(inFile) ;
+            
             BufferedWriter bw = IOUtils.getTextWriter(outFile);
-            while((temp = br.readLine())!=null){
+            Set chrs = getSplit(chr);
+            String temp =null;
+            String[] te = null;
+            while ((temp = br.readLine())!=null){
                 if(temp.startsWith("#")){
                     bw.write(temp);
                     bw.newLine();
                 }else{
-                    
+                    te = temp.split("\t");
+                    if(chrs.add(te[0])){
+                        chrs.remove(te[0]);
+                    }else{
+                        bw.write(temp);
+                        bw.newLine();
+                    }
                 }
             }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            
+        }
+    }
+    public static void statHet(String inFile,String outFile,int window){
+        try {
+            TabixReader br = new TabixReader(inFile) ;
+            
         } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
+    private static Set getSplit(String chr){
+        String[] chrs = chr.split(",");
+        Set a = new HashSet();
+        for (int i=0;i< chrs.length;i++){
+            a.add(chrs[i]);
+        }
+        return a;
+    }
+    private void getFilterd(String inFile,String outFile,String MQ, String FS, String MQRankSum
+    , String ReadPosRankSum , String BSQRankSum,String SOR){
+        try {
+            System.out.printf("Filtering by FS > %s; MQ < %s; MQRankSum < %s; ReadPosRankSum < %s;"
+                    + " BSQRankSum < %s; SOR > %s ...\n",FS,MQ,MQRankSum,ReadPosRankSum,
+                  BSQRankSum,SOR);
+            BufferedReader vcf;
+            if(inFile.endsWith("gz")){
+                vcf = IOUtils.getTextGzipReader(inFile);
+//                outFile = inFile.replace(".vcf.gz",".filtered.vcf");
+            }
+            else {
+                vcf = IOUtils.getTextReader(inFile);
+//                outFile = inFile.replace(".vcf",".filtered.vcf");
+            }
+            String mq = "70", fs = "40", mqranksum = "-12.5", readposranksum = "-8",
+                    bqrs = "0",sor="1";
+            String temp = null;
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            int snps = 0, rmsnp = 0;
+            boolean filter = true;
+            while((temp = vcf.readLine())!=null){
+                if(!temp.startsWith("#")){
+                    snps++;
+                    if(snps % 100000 == 0) System.out.println("Analyzing SNPs\t"+snps+"...........");
+                    try{
+                      mq = temp.split("MQ=")[1].split(";")[0];
+                    }catch (Exception ex){
+                    };
+                    if(Double.parseDouble(mq) < Double.parseDouble(MQ)) continue;
+                    try{
+                        fs = temp.split("FS=")[1].split(";")[0];}
+                    catch (Exception ex){
+                    };
+                    if(Double.parseDouble(fs) > Double.parseDouble(FS)) continue;
+                    try{
+                        readposranksum = temp.split("ReadPosRankSum=")[1].split(";")[0];}
+                    catch (Exception ex){
+                    };
+                    if(Double.parseDouble(readposranksum) < Double.parseDouble(ReadPosRankSum)) continue;
+                    try{
+                        mqranksum = temp.split("MQRankSum=")[1].split(";")[0];}
+                    catch (Exception ex){
+                    };
+                    if(Double.parseDouble(mqranksum) < Double.parseDouble(MQRankSum)) continue;
+                    try{
+                        sor = temp.split("SOR=")[1].split("\t")[0];}
+                    catch (Exception ex){
+                    };
+                    if(Double.parseDouble(sor) > Double.parseDouble(SOR)) continue;
+                    
+                    try{
+                        bqrs = temp.split("BaseQRankSum=")[1].split(";")[0];}
+                    catch (Exception ex){
+                    };
+                    if(Double.parseDouble(bqrs) < Double.parseDouble(BSQRankSum)) continue;
+                    rmsnp++;
+                    bw.write(temp);
+                    bw.newLine();
+                    bw.flush();
+                }else if(temp.startsWith("##FILTER")){
+                    if(filter){
+                        filter = false;
+                        bw.write("##FILTER=<ID=LowMQ,Description=\"MQ < "+MQ+"\">\n");
+                        bw.write("##FILTER=<ID=HighFS,Description=\"FS > "+FS+"\">\n");
+                        bw.write("##FILTER=<ID=HighSOR,Description=\"SOR < "+SOR+"\">\n");
+                        bw.write("##FILTER=<ID=LowDP,Description=\"DP < "+2+"\">\n");
+                        bw.write("##FILTER=<ID=LowQD,Description=\"QD < "+2.0+"\">\n");
+                        bw.write("##FILTER=<ID=LowBaseQRankSum,Description=\"BaseQRankSum < "+bqrs+"\">\n");
+                        bw.write("##FILTER=<ID=LowMQRankSum,Description=\"MQRankSum < "+MQRankSum+"\">\n");
+                        bw.write("##FILTER=<ID=LowReadPosRankSum,Description=\"ReadPosRankSum < "+ReadPosRankSum+"\">\n");
+                    }
+                }else{
+                    bw.write(temp);
+                    bw.newLine();
+                    bw.flush();
+                }
+            }
+            SNPsAll = snps;
+            SNPsFail = snps-rmsnp;
+            System.out.println("Total SNPs:\t"+snps);
+            System.out.println("SNPs removed:\t"+(snps-rmsnp));
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
     private void getXPCLR(String inFile){
         try {
             BufferedReader br = IOUtils.getTextReader(inFile);
@@ -238,64 +394,7 @@ public class VcfTools {
             Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    private void getFilterd(String inFile,String outFile,String MQ, String FS, String ReadPosRankSum
-    , String MQRankSum , String BSQRankSum){
-        try {
-            System.out.println("Filtering by FS, MQ, MQRankSum,ReadPosRankSum...");
-            BufferedReader vcf;
-            if(inFile.endsWith("gz")){
-                vcf = IOUtils.getTextGzipReader(inFile);
-//                outFile = inFile.replace(".vcf.gz",".filtered.vcf");
-            }
-            else {
-                vcf = IOUtils.getTextReader(inFile);
-//                outFile = inFile.replace(".vcf",".filtered.vcf");
-            }
-            String mq = "70", fs = "60", mqranksum = "-8", readposranksum = "-8",
-                    bqrs = "0";
-            String temp = null;
-            BufferedWriter bw = IOUtils.getTextWriter(outFile);
-            while((temp = vcf.readLine())!=null){
-                if(!temp.startsWith("#")){
-                    try{
-                      mq = temp.split("MQ=")[1].split(";")[0];
-                    }catch (Exception ex){
-                    };
-                    if(Double.parseDouble(mq) < Double.parseDouble(MQ)) continue;
-                    try{
-                        fs = temp.split("FS=")[1].split(";")[0];}
-                    catch (Exception ex){
-                    };
-                    if(Double.parseDouble(fs) > Double.parseDouble(FS)) continue;
-                    try{
-                        readposranksum = temp.split("ReadPosRankSum=")[1].split(";")[0];}
-                    catch (Exception ex){
-                    };
-                    if(Double.parseDouble(readposranksum) < Double.parseDouble(ReadPosRankSum)) continue;
-                    try{
-                        mqranksum = temp.split("MQRankSum=")[1].split(";")[0];}
-                    catch (Exception ex){
-                    };
-                    
-                    if(Double.parseDouble(mqranksum) < Double.parseDouble(MQRankSum)) continue;
-                    try{
-                        bqrs = temp.split("BaseQRankSum=")[1].split(";")[0];}
-                    catch (Exception ex){
-                    };
-                    if(Double.parseDouble(bqrs) < Double.parseDouble(BSQRankSum)) continue;
-                    bw.write(temp);
-                    bw.newLine();
-                }else{
-                    bw.write(temp);
-                    bw.newLine();
-                }
-            }
-            bw.flush();
-            bw.close();
-        } catch (IOException ex) {
-            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
+    
     private void getGQ(String inFile){
         try {
             System.out.println("Calculating GQ...");
@@ -344,88 +443,7 @@ public class VcfTools {
             ex.printStackTrace();
         }
     }
-//    private void getDepth(String inFile,String outFile,int dim){
-//        try {
-//            System.out.println("Now analyzing SNP depth...");
-//            BufferedReader vcf;
-//            BufferedWriter VcfDepth;
-//            BufferedWriter rsdFile;
-//            if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
-//            else  vcf = IOUtils.getTextReader(inFile);
-//            VcfDepth = IOUtils.getTextWriter(outFile+".all");
-//            rsdFile = IOUtils.getTextWriter(outFile+".rsd");
-//            String temp = null;
-//            String[] tem = null;
-////            Set depth = new HashSet(); // store the depth catalog
-//            Integer d = 0;
-//            int depthArray[][] = new int[101][300];// store the depth for each catalog
-//            int snp = 0;
-//            int sampleNum = 0;
-//            int depthAll[] = new int[dim+1];
-//            while ((temp = vcf.readLine())!=null){
-//                if(!temp.startsWith("#")){
-//                    snp++;
-//                    if(snp%1000000 == 0) System.out.println("Anlyzing " + snp +"...");
-//                    tem = temp.split("\t");
-//                    sampleNum = tem.length - 9;
-////                    int dp =0;
-//                    double rsd = 0;
-//                    if(tem[4].length()==1){
-////                        for (int i = 9 ; i < tem.length; i++){
-////                            String re = tem[i];
-////                            if(re.split(":").length < 3){
-//////                                System.out.println(temp);
-////                                continue;
-////                            }
-////                            d = Integer.parseInt(re.split(":")[2]);
-////                            if (d > 100) d = 100;
-////                            depthArray[d][i-9]++;
-////                        } 
-//                        double avg = 0;
-//                        double dep[] = new double[tem.length-9];
-//                        for (int i = 9; i < tem.length; i++){
-//                            String re = tem[i];
-//                            if(re.split(":").length<3) continue;
-//                            d = Integer.parseInt(re.split(":")[2]);
-//                            dep[i-9] = d;
-//                        } 
-////                        dp = Integer.parseInt(tem[7].split("DP=")[1].split(";")[0]);
-//                        avg = dp/sampleNum;
-//                        double var=0;
-//                        for (int i = 0; i<dep.length; i++){
-//                            var+=(dep[i]-avg)*(dep[i]-avg);
-//                        }
-////                        rsd = Math.sqrt(var)/avg;
-//                        rsd = Math.sqrt(var);
-//                        if (dp > dim) dp = dim;
-//                        depthAll[dp]++;
-//                    }
-//                    rsdFile.write(Integer.toString(dp)+"\t" + Double.toString(rsd));
-//                    rsdFile.newLine();
-//                }
-//            }
-//            rsdFile.flush();
-//            rsdFile.close();
-////            for (int i = 0; i < 101;i++){
-////                VcfDepth.write(Integer.toString(i));
-////                for (int j = 0; j < sampleNum;j++){
-////                    VcfDepth.write("\t" + depthArray[i][j]);
-////                    VcfDepth.flush();
-////                }
-////                VcfDepth.newLine();
-////            }
-////            VcfDepth.close();
-//            for (int i = 0; i < dim+1; i++){
-//                VcfDepth.write(Integer.toString(i));
-//                VcfDepth.write("\t" + depthAll[i]);
-//                VcfDepth.newLine();
-//            }
-//            VcfDepth.flush();
-//            VcfDepth.close();
-//        } catch (IOException ex) {
-//           ex.printStackTrace();
-//        }
-//    }
+
     private void getABD(String inFile, String outFile) {
         BufferedReader vcf;
         BufferedWriter nvcf,bed,stat,Avcf;
@@ -539,7 +557,7 @@ public class VcfTools {
 //                            stat.flush();
 //                            stat.close();
                             System.out.println("Chrmosome: " + chr + ","+ size +"*"+ExSize);
-                            nvcf = IOUtils.getTextGzipWriter(theDir.toString()+"/"+end+".chr"+chr+".temp"+size+".vcf.gz");
+                            nvcf = IOUtils.getTextWriter(theDir.toString()+"/"+end+".chr"+chr+".temp"+size+".vcf");
                             nvcf.write(annotation.toString());
                         }
                         nvcf.write(temp);
@@ -553,7 +571,7 @@ public class VcfTools {
                         size = 1;
                         chr = temps[0];
                         System.out.println("Chrmosome: " + chr + ","+ size +"*"+ExSize);
-                        nvcf = IOUtils.getTextGzipWriter(theDir.toString()+"/"+end+".chr"+chr+".temp"+size+".vcf.gz");
+                        nvcf = IOUtils.getTextWriter(theDir.toString()+"/"+end+".chr"+chr+".temp"+size+".vcf");
                         nvcf.write(annotation.toString());
                         nvcf.write(temp);
                         nvcf.newLine();
@@ -578,57 +596,62 @@ public class VcfTools {
             BufferedWriter VcfDepth;
             if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
             else  vcf = IOUtils.getTextReader(inFile);
-            outFile = inFile.replace(".vcf",".depth.vcf");
+//            outFile = inFile.replace(".vcf",".depth.vcf");
             VcfDepth = IOUtils.getTextWriter(outFile);
             String temp = null;
             String[] tem = null;
 //            Set depth = new HashSet(); // store the depth catalog
-            Integer d = 0;
-            int snp = 0;
+            Double d = 0.0;
+            int snps = 0,rmsnps = 0;
             int sampleNum = 0;
             while ((temp = vcf.readLine())!=null){
                 if(!temp.startsWith("#")){
-                    snp++;
-                    if(snp%1000000 == 0) System.out.println("Anlyzing " + snp +"...");
+                    snps++;
+                    if(snps%1000000 == 0) System.out.println("Anlyzing " + snps +"...");
                     tem = temp.split("\t");
                     sampleNum = tem.length - 9;
                     int dp =0;
                     double rsd = 0;
-                    int meanCUT = (int) ((sd-a)/b);
+                    int s=0;
                     if(tem[4].length()==1){
 //                        dp = Integer.parseInt(tem[7].split("DP=")[1].split(";")[0]);
                         double dep[] = new double[sampleNum];
                         for (int i = 9; i < tem.length; i++){
                             String re = tem[i];
-                            if(re.split(":").length<3) continue;
+                            if(re.split(":").length<3){
+//                                rmsnps++;
+                                continue;
+                            }
                             if(!re.split(":")[0].startsWith(".")){
-                                d = Integer.parseInt(re.split(":")[2]);
+                                d = Double.parseDouble(re.split(":")[2]);
+                                s++;
                             }else{
-                                d = 0;
+                                d = Double.NaN;
                             }
                             dep[i-9] = d;
                         }
                         for(int i = 0; i< dep.length;i++){
-                            dp+=dep[i];
+                            if(!Double.isNaN(dep[i])) dp+=dep[i];
                         }
-                        if(dp < mindepth ) continue;
-                        if (dp > maxdepth) continue;
+                        if(dp < mindepth ){
+                            rmsnps++;
+                            continue;
+                        }
+                        if (dp > maxdepth) {
+                            rmsnps++;
+                            continue;
+                        }
 //                        StandardDeviation rrsd = new StandardDeviation();
                         rsd = getSD(dep);
 //                        double rsd1 = getSD(dep);
-                        if(rsd > sd) continue;
-                        if(dp > meanCUT){
-                            VcfDepth.write(temp);
-                            VcfDepth.newLine();
-                            VcfDepth.flush();
-                        }else {
-                            double cut = a+b*dp;
-                            if (rsd < cut){
-                                VcfDepth.write(temp);
-                                VcfDepth.newLine();
-                                VcfDepth.flush();
-                            }
+                        if(rsd > sd){
+                            rmsnps++;
+                            continue;
                         }
+//                        if(dp > meanCUT){
+                        VcfDepth.write(temp);
+                        VcfDepth.newLine();
+                        VcfDepth.flush();
                     }
                 }else{
                     VcfDepth.write(temp);
@@ -636,37 +659,174 @@ public class VcfTools {
                     VcfDepth.flush();
                 }
             }
+            SNPsAll = snps;
+            SNPsFail = rmsnps;
             VcfDepth.flush();
             VcfDepth.close();
         } catch (IOException ex) {
            ex.printStackTrace();
         }
     }
-    /*
-    * remove SNPs by IBS
-    *
-    */
-    private void removeByIDS(String inFile,String outFile){
-        System.out.println("Now removing by IBS....");
-        BufferedReader vcf;
-        if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
-        else  vcf = IOUtils.getTextReader(inFile);
-        BufferedWriter ibs = IOUtils.getTextWriter(outFile);
-        String temp = null;
-        StringBuilder snp = new StringBuilder();
+    private void dpFilter(String inFile,String outFile,double se) {
+        try {
+            System.out.println("Now Filtering SNP based on depth...");
+            BufferedReader vcf;
+            BufferedWriter VcfDepth;
+            if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
+            else  vcf = IOUtils.getTextReader(inFile);
+//            outFile = inFile.replace(".vcf",".depth.vcf");
+            VcfDepth = IOUtils.getTextWriter(outFile);
+            String temp = null;
+            String[] tem = null;
+//            Set depth = new HashSet(); // store the depth catalog
+            int snps = 0,rmsnps = 0;
+            int sampleNum = 0;
+            while ((temp = vcf.readLine())!=null){
+                if(!temp.startsWith("#")){
+                    snps++;
+                    if(snps%1000000 == 0) System.out.println("Anlyzing " + snps +"...");
+                    tem = temp.split("\t");
+                    sampleNum = tem.length - 9;
+                    int dp =0;
+                    double d = 0;
+                    double rsd = 0;
+                    int s=0;
+                    if(tem[4].length()==1){
+//                        dp = Integer.parseInt(tem[7].split("DP=")[1].split(";")[0]);
+                        double dep[] = new double[sampleNum];
+                        for (int i = 9; i < tem.length; i++){
+                            String re = tem[i];
+                            if(re.split(":").length<3){
+//                                rmsnps++;
+                                continue;
+                            }
+                            if(!re.split(":")[0].startsWith(".")){
+                                d = Double.parseDouble(re.split(":")[2]);
+                                dp += d;
+                                s++;
+                            }else{
+                                d = Double.NaN;
+                            }
+                            dep[i-9] = d;
+                        }
+//                        if(dp < s * 1.8 | dp > s* 5.5 ) continue;
+//                        StandardDeviation rrsd = new StandardDeviation();
+                        double rs = getSD(dep);
+                        double rsd1 = rs/dp;
+                        if(rsd1 > se) {
+                            continue;
+                        }
+//                        if(dp > meanCUT){
+                        VcfDepth.write(temp);
+                        VcfDepth.newLine();
+                        VcfDepth.flush();
+                    }
+                }else{
+                    VcfDepth.write(temp);
+                    VcfDepth.newLine();
+                    VcfDepth.flush();
+                }
+            }
+            SNPsAll = snps;
+            SNPsFail = rmsnps;
+            VcfDepth.flush();
+            VcfDepth.close();
+        } catch (IOException ex) {
+           ex.printStackTrace();
+        }
+    }
+    public  void rsdFilter(String inFile,String outFile,double se,String suffix) {
+        try {
+            System.out.println("Now Filtering SNP based on rsd...");
+            File f = new File(inFile);
+            File[] fs = IOUtils.listRecursiveFiles(f);
+            File[] sub = IOUtils.listFilesEndsWith(fs, suffix);
+            BufferedReader vcf;
+            BufferedWriter VcfDepth;
+            VcfDepth = IOUtils.getTextWriter(outFile);
+            for (File fi : sub){
+                vcf = IOUtils.getTextReader(fi.toString());
+                String out = fi.toString().replace(".vcf",".dp.vcf");
+                BufferedWriter bw = IOUtils.getTextWriter(out);
+                VcfDepth.write(fi.toString()+"\t");
+                String temp = null;
+                String[] tem = null;
+                int snps = 0,rmsnps = 0;
+                int sampleNum = 0;
+                while ((temp = vcf.readLine())!=null){
+                    if(!temp.startsWith("#")){
+                        snps++;
+                        if(snps%1000000 == 0) System.out.println("Anlyzing " + snps +"...");
+                        tem = temp.split("\t");
+                        sampleNum = tem.length - 9;
+                        int dp =0;
+                        double d = 0;
+                        double rsd = 0;
+                        int s=0;
+                        if(tem[4].length()==1){
+//                        dp = Integer.parseInt(tem[7].split("DP=")[1].split(";")[0]);
+                            double dep[] = new double[sampleNum];
+                            for (int i = 9; i < tem.length; i++){
+                                String re = tem[i];
+                                if(re.split(":").length<3){
+                                    continue;
+                                }
+                                if(!re.split(":")[0].startsWith(".")){
+                                    d = Double.parseDouble(re.split(":")[2]);
+                                    dp += d;
+                                    s++;
+                                }else{
+                                    d = Double.NaN;
+                                }
+                                dep[i-9] = d;
+                            }
+                            double rs = getSD(dep);
+                            double rsd1 = rs/dp;
+                            if(rsd1 > se){
+                                rmsnps++;
+                                continue;
+                            }
+                            bw.write(temp);
+                            bw.newLine();
+                        }
+                    }else{
+                        bw.write(temp);
+                        bw.newLine();
+                    }
+                    
+                }
+                bw.flush();
+                bw.close();
+                VcfDepth.write(snps+"\t"+rmsnps+"\n");
+                SNPsAll += snps;
+                SNPsFail += rmsnps;
+            }
+            VcfDepth.write("Total"+SNPsAll+"\t"+SNPsFail+"\n");
+            VcfDepth.flush();
+            VcfDepth.close();
+        } catch (IOException ex) {
+           ex.printStackTrace();
+        }
     }
     private double getSD(double dep[]){
         double sd=0;
         double sum = 0;
+        int s = 0;
         for(int i = 0; i< dep.length;i++){
-            sum+=dep[i];
+            if(!Double.isNaN(dep[i])){
+               sum+=dep[i]; 
+               s++;
+            }
+            
         }
-        double mean = sum/dep.length;
+        double mean = sum/s;
         sum =0;
         for(int i = 0; i< dep.length;i++){
-           sum += ((dep[i]-mean)*(dep[i]-mean));
+            if(!Double.isNaN(dep[i])){
+                sum += ((dep[i]-mean)*(dep[i]-mean));
+            }
         }
-        sd = Math.sqrt(sum/(dep.length-1));
+        sd = Math.sqrt(sum/(s-1));
         return sd;
     }
     private void getHet(String inFile,String outFile){
@@ -948,7 +1108,7 @@ public class VcfTools {
     * statFile: file containing the information of vcf;, if not provided;
     * Outputs: file with $size number vcfs, and evenly distributed in each chr.
     */
-    private void getSub(String inFile,String outFile,int size,int SNPnum,int header){
+    public static void getSub(String inFile,String outFile,int size,int SNPnum){
         
         try {
             BufferedReader br;
@@ -965,28 +1125,27 @@ public class VcfTools {
             for(int j = 0; j < size;j++){
                 int a = (int)(1+Math.random()*size);
                 pos.add(a);
-                if(pos.size()==SNPnum) break;
                 po.put(a,0);
+                if(pos.size()==SNPnum) break;
             }
-            StringBuilder headerS = new StringBuilder();
-            boolean w = true;
+//            StringBuilder headerS = new StringBuilder();
+//            boolean w = true;
             while ((temp = br.readLine())!=null){
                 if(temp.startsWith("#") ){
-                    headerS.append(temp+"\n");
+                    bw.write(temp);
+                    bw.newLine();
                 }else{
-                    if(w){
-                        bw.write(headerS.toString());
-                        w = false;
+                    i++;
+                    if(i%1000000==0){
+                        System.out.println("Analyzing snps: "+i+" ....");
                     }
                     if (po.get(i)!=null){
                         bw.write(temp);
                         bw.newLine(); 
                     }
+                    
                 }
-                i++; 
-                if(i%1000000==0){
-                    System.out.println("Analyzing snps: "+i+" ....");
-                }
+                
             }
             bw.flush();
             bw.close();
@@ -1018,7 +1177,7 @@ public class VcfTools {
             while ((temp = vcf.readLine())!=null){
                 if(!temp.startsWith("#")){
                     snp++;
-                    if(snp%1000000 == 0) System.out.println("Anlyzing " + snp +"...");
+                    if(snp%10000 == 0) System.out.println("Anlyzing " + snp +"...");
                     tem = temp.split("\t");
                     sampleNum = tem.length - 9;
                     int dp =0;
@@ -1031,16 +1190,15 @@ public class VcfTools {
 //                        depth.append(Integer.parseInt(tem[7].split("DP=")[1].split(";")[0]));
                         for (int ch = 0 ;ch < sampleNum; ch ++){
                             if(tem[ch+9].startsWith(".")) {
-                                geno = "0";
+                                geno = "NA";
+                                deptheach[ch] = Double.NaN;
                             }else{
                                 geno = tem[ch+9].split(":")[2];
+                                deptheach[ch] = Double.parseDouble(geno);
                             }
                             depth.append(geno);
                             depth.append("\t");
-                            deptheach[ch] = Integer.parseInt(geno);
-//                            depthmean0[ch] = Double.parseDouble(geno);
                         }
-                        
                         depth.append(getSD(deptheach));
                         VcfDepth.write(depth.toString());
                         VcfDepth.newLine();
@@ -1048,33 +1206,11 @@ public class VcfTools {
                 }
             }
             StringBuilder DM = new StringBuilder();
-//            for (int i = 0; i< sampleNum -1;i++){
-//                depthmean[i] = depthmean[i]/snp;
-//                DM.append(depthmean[i]);
-//                DM.append("\t");
-//            };
-//            depthmean[sampleNum-1] = depthmean[sampleNum-1]/snp;
-//            DM.append(depthmean[sampleNum]);
+
             VcfDepth.write(DM.toString());
             VcfDepth.flush();
             VcfDepth.close();
-//            for (int i = 0; i < 101;i++){
-//                VcfDepth.write(Integer.toString(i));
-//                for (int j = 0; j < sampleNum;j++){
-//                    VcfDepth.write("\t" + depthArray[i][j]);
-//                    VcfDepth.flush();
-//                }
-//                VcfDepth.newLine();
-//            }
-//            VcfDepth.close();
-//            for (int i = 0; i < dim+1; i++){
-//                VcfDepth.write(Integer.toString(i));
-//                VcfDepth.write("\t" + depthAll[i]);
-//                VcfDepth.newLine();
-//            }
-//            VcfDepth.flush();
-//            VcfDepth.close();
-        } catch (IOException ex) {
+       } catch (IOException ex) {
            ex.printStackTrace();
         }
     }

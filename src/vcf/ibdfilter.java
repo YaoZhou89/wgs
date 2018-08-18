@@ -7,11 +7,14 @@ package vcf;
 
 import io.BuilderFromVCF;
 import io.IOUtils;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -29,63 +32,65 @@ import net.maizegenetics.taxa.distance.DistanceMatrix;
  * @author yaozhou, modified from bukowski's code
  */
 public class ibdfilter {
-    
+//    public ibdfilter(){
+//        
+//    };
     public static void PfilterBasedOnIBD(String hm3gbsSNPsFile, String hm3SNPsFile, String outFile, int minComp, double maxIBDDist, 
         int windowSize, int numThreads, int bestContrasts) {
-    
-        int lowPhysLimit;
-        int highPhysLimit;
+        Integer[] num = new Integer[2];
+        int lowPhysLimit,lowAnchorLimit;
+        int highPhysLimit,highAnchorLimit;
         String chr;
         BufferedWriter bw = IOUtils.getTextWriter(outFile+".info.txt");
         BufferedWriter bw1 = IOUtils.getTextWriter(outFile+".pos.txt");
+        BufferedWriter bw2 = IOUtils.getTextWriter(outFile+".vcf");
         try {
-                //System.out.println("Contrast pairs:");
-                //System.out.print(contrastPairs);
-                bw.write("Window\tStartSite\tTaxa\tmaxIBDDist\t IBDTaxa\tIBDContrasts\tMeanDist\n");
-            
-        
-        GenotypeTable hm3gbs=net.maizegenetics.dna.snp.io.BuilderFromVCF.getBuilder(hm3gbsSNPsFile).build();        
-        GenotypeTable hm3=net.maizegenetics.dna.snp.io.BuilderFromVCF.getBuilder(hm3SNPsFile).build();
-        
-        if(hm3 == null) { System.out.println(" hm3 is null...."+hm3SNPsFile); }
-        if(hm3gbs == null) { System.out.println(" hm3gbs is null...."+hm3gbsSNPsFile); }
-        
+            bw.write("Window\tStartSite\tTaxa\tmaxIBDDist\t IBDTaxa\tIBDContrasts\tMeanDist\n");
+            GenotypeTable hm3gbs=net.maizegenetics.dna.snp.io.BuilderFromVCF.getBuilder(hm3gbsSNPsFile).build();        
+            GenotypeTable hm3=net.maizegenetics.dna.snp.io.BuilderFromVCF.getBuilder(hm3SNPsFile).build();
+            if(hm3 == null) { System.out.println(" inFile is null...."+hm3SNPsFile); }
+            if(hm3gbs == null) { System.out.println(" anchor is null...."+hm3gbsSNPsFile); }
         // try to determine the chromosome automatically
-        chr = hm3gbs.chromosomes()[0].getName();
-        if(! chr.equals(hm3.chromosomes()[0].getName()))
-        {
-            System.out.println("Chromosome names not the same: "+chr+", "+hm3.chromosomes()[0].getName());
-            return;
-        }
-        else
-        {
-            System.out.println("Processing chromosome "+chr);
-        }
+            chr = hm3gbs.chromosomes()[0].getName();
+            if(! chr.equals(hm3.chromosomes()[0].getName())){
+                System.out.println("Chromosome names not the same: "+chr+", "+hm3.chromosomes()[0].getName());
+                return;
+            }else{
+                System.out.println("Processing chromosome "+chr);
+            }
         // Determine the low and high physical limits of the hm3 file
-        lowPhysLimit = hm3.physicalPositions()[0];
-        highPhysLimit = hm3.physicalPositions()[hm3.numberOfSites()-1];
-        System.out.println("Low, High phys limit in hm3: "+ lowPhysLimit+", "+highPhysLimit);
-        
+            lowPhysLimit = hm3.physicalPositions()[0];
+            highPhysLimit = hm3.physicalPositions()[hm3.numberOfSites()-1];
+            System.out.println("Low, High phys limit in hm3: "+ lowPhysLimit+", "+highPhysLimit);
+            lowAnchorLimit = hm3gbs.physicalPositions()[0];
+//            highAnchorLimit = hm3gbs.physicalPositions()[hm3gbs.numberOfSites()-1];
+            String temp = "";
+            String te[] = null;
+            BufferedReader br = IOUtils.getTextReader(hm3SNPsFile);
+            while ((temp = br.readLine())!=null){
+                bw2.write(temp);
+                bw2.newLine();
+                bw2.flush();
+                if(!temp.startsWith("#")){
+                    if(temp.split("\t")[1].equals(Integer.toString(lowAnchorLimit))) break;
+                }
+            }
+            Set PassPos = new HashSet();
         // Normalize taxa names
-        List<String> hm3gbsTaxaNames = new ArrayList<String>();
-        for(int i=0;i<hm3gbs.numberOfTaxa(); i++)
-        {
-            hm3gbsTaxaNames.add(hm3gbs.taxaName(i).replaceAll(".h5", ""));
-        }
-        List<String> hm3TaxaNames = new ArrayList<String>();
-        for(int i=0;i<hm3.numberOfTaxa(); i++)
-        {
-            hm3TaxaNames.add(hm3.taxaName(i).replaceAll(".h5", ""));
-        }
-        
-        int[] aTobTaxa=new int[hm3gbs.numberOfTaxa()];
+            List<String> hm3gbsTaxaNames = new ArrayList<String>();
+            for(int i=0;i<hm3gbs.numberOfTaxa(); i++){
+                hm3gbsTaxaNames.add(hm3gbs.taxaName(i).replaceAll(".h5", ""));
+            }
+            List<String> hm3TaxaNames = new ArrayList<String>();
+            for(int i=0;i<hm3.numberOfTaxa(); i++){
+                hm3TaxaNames.add(hm3.taxaName(i).replaceAll(".h5", ""));
+            }
+            int[] aTobTaxa=new int[hm3gbs.numberOfTaxa()];
             for (int i=0; i<hm3gbs.numberOfTaxa(); i++) {
                 aTobTaxa[i]=Integer.MIN_VALUE;
                 int tind = hm3TaxaNames.indexOf(hm3gbsTaxaNames.get(i));
-                if(tind>-1) 
-                {
+                if(tind>-1){
                     aTobTaxa[i]=tind;
-                    //System.out.println("hm3gbs taxon "+hm3gbsTaxaNames.get(i)+" found in hm3 file at index "+tind+" ("+hm3TaxaNames.get(tind)+")");
                 }
                 else
                 {
@@ -93,93 +98,80 @@ public class ibdfilter {
                 }
             }
         //GenotypeTableBuilder gtb=GenotypeTableBuilder.getSiteIncremental(hm3.taxa());
-        GenotypeTable a;
-        GenotypeTable b;
-        int lastHm3SiteProcessed = 0;
-        int lastHm3SiteProcPos = 0;
-        for (int start=0; start < hm3gbs.numberOfSites(); start+=windowSize) {
+            GenotypeTable a;
+            GenotypeTable b;
+            int lastHm3SiteProcessed = 0;
+            int lastHm3SiteProcPos = 0;
+            for (int start=0; start < hm3gbs.numberOfSites(); start+=windowSize) {
             
-            int phys_start_gbs = hm3gbs.physicalPositions()[start];
-            int phys_end_gbs; 
-            int lastGBSsite = start+windowSize-1;
-            if(lastGBSsite >= hm3gbs.physicalPositions().length)
-            {
-                lastGBSsite = hm3gbs.physicalPositions().length-1;
-            }
-            
-            phys_end_gbs = hm3gbs.physicalPositions()[lastGBSsite];
-            
-            if(phys_end_gbs < lowPhysLimit || phys_start_gbs > highPhysLimit) { continue; }
-            
-            int endInstance = phys_end_gbs;
-            int startInstance = phys_start_gbs;
-            if(endInstance > highPhysLimit)
-            {
-                endInstance = highPhysLimit;
-            }
-            if(startInstance<lowPhysLimit)
-            {
-                startInstance = lowPhysLimit;
-            }
-          
-            System.out.println("phys_start_gbs: "+phys_start_gbs + " phys_end_gbs: "+phys_end_gbs);
-            System.out.println("startInstance: "+startInstance + " endInstance: "+endInstance);
-            
-            //GenotypeTable a=hm3gbs;
-            a=FilterGenotypeTable.getInstance(hm3gbs,start,lastGBSsite);
-            //GenotypeTable b=hm3;
-            b=FilterGenotypeTable.getInstance(hm3, chr, startInstance, endInstance);
-            if(b == null) { continue; }
-            System.out.println("Taxa in b: " + b.numberOfTaxa());
-            System.out.println("Sites in b: " + b.numberOfSites());
-            
-            
-            DistanceMatrix dm = IBSDistanceMatrix.getInstance(a, minComp, null);
-            int numTaxa = dm.numberOfTaxa();
-            int numTestSites=b.numberOfSites();
-            int numTaxaChunk = 150;
-            
-            int [][] acounts = new int[numTaxaChunk][3]; // countIBD, taxaIBD, count
-            double [][] amean = new double[numTaxaChunk][1];
-            int[][] amjSame=new int[numTaxaChunk][numTestSites];
-            int[][] aminorSame=new int[numTaxaChunk][numTestSites];
-            int[][][] arightNuc=new int[numTaxaChunk][6][numTestSites];
-            int[][][] awrongNuc=new int[numTaxaChunk][6][numTestSites];
-            int[][] adiff=new int[numTaxaChunk][numTestSites];
-            int[][] ahet=new int[numTaxaChunk][numTestSites];
-            int[][] aminorComp=new int[numTaxaChunk][numTestSites];
-            byte[][] diploids=new byte[3][numTestSites];//mj:mj,mj:mn,mn:mn
-            String [][] acontrastPairs = new String[numTaxaChunk][1];
-            String [][] afailedContrasts = new String[numTaxaChunk][numTestSites];
-            for (int k=0; k<numTestSites; k++) {
-                diploids[0][k]=GenotypeTableUtils.getDiploidValue(b.majorAllele(k),b.majorAllele(k));
-                diploids[1][k]=GenotypeTableUtils.getDiploidValue(b.majorAllele(k),b.minorAllele(k));
-                diploids[2][k]=GenotypeTableUtils.getDiploidValue(b.minorAllele(k),b.minorAllele(k));
-            }
-            // Initialize string arrays holding contrast info
-            for(int i=0;i<numTaxaChunk;i++)
-            {
-                acontrastPairs[i][0] = "";
-                for(int j=0;j<numTestSites;j++)
-                {
-                    afailedContrasts[i][j] = "";
+                int phys_start_gbs = hm3gbs.physicalPositions()[start];
+                int phys_end_gbs; 
+                int lastGBSsite = start+windowSize-1;
+                if(lastGBSsite >= hm3gbs.physicalPositions().length){
+                    lastGBSsite = hm3gbs.physicalPositions().length-1;
                 }
-            }
-             
+                phys_end_gbs = hm3gbs.physicalPositions()[lastGBSsite];
+                if(phys_end_gbs < lowPhysLimit || phys_start_gbs > highPhysLimit) { continue; }
+            
+                int endInstance = phys_end_gbs;
+                int startInstance = phys_start_gbs;
+                if(endInstance > highPhysLimit){
+                    endInstance = highPhysLimit;
+                }
+                if(startInstance<lowPhysLimit){
+                    startInstance = lowPhysLimit;
+                }
+                System.out.println("phys_start_gbs: "+phys_start_gbs + " phys_end_gbs: "+phys_end_gbs);
+                System.out.println("startInstance: "+startInstance + " endInstance: "+endInstance);
+                
+            //GenotypeTable a=hm3gbs;
+                a=FilterGenotypeTable.getInstance(hm3gbs,start,lastGBSsite);
+            //GenotypeTable b=hm3;
+                b=FilterGenotypeTable.getInstance(hm3, chr, startInstance, endInstance);
+                if(b == null) { continue; }
+                System.out.println("Taxa in b: " + b.numberOfTaxa());
+                System.out.println("Sites in b: " + b.numberOfSites());
+            
+                DistanceMatrix dm = IBSDistanceMatrix.getInstance(a, minComp, null);
+                int numTaxa = dm.numberOfTaxa();
+                int numTestSites=b.numberOfSites();
+                int numTaxaChunk = 150;
+            
+                int [][] acounts = new int[numTaxaChunk][3]; // countIBD, taxaIBD, count
+                double [][] amean = new double[numTaxaChunk][1];
+                int[][] amjSame=new int[numTaxaChunk][numTestSites];
+                int[][] aminorSame=new int[numTaxaChunk][numTestSites];
+                int[][][] arightNuc=new int[numTaxaChunk][6][numTestSites];
+                int[][][] awrongNuc=new int[numTaxaChunk][6][numTestSites];
+                int[][] adiff=new int[numTaxaChunk][numTestSites];
+                int[][] ahet=new int[numTaxaChunk][numTestSites];
+                int[][] aminorComp=new int[numTaxaChunk][numTestSites];
+                byte[][] diploids=new byte[3][numTestSites];//mj:mj,mj:mn,mn:mn
+                String [][] acontrastPairs = new String[numTaxaChunk][1];
+                String [][] afailedContrasts = new String[numTaxaChunk][numTestSites];
+                for (int k=0; k<numTestSites; k++) {
+                    diploids[0][k]=GenotypeTableUtils.getDiploidValue(b.majorAllele(k),b.majorAllele(k));
+                    diploids[1][k]=GenotypeTableUtils.getDiploidValue(b.majorAllele(k),b.minorAllele(k));
+                    diploids[2][k]=GenotypeTableUtils.getDiploidValue(b.minorAllele(k),b.minorAllele(k));
+                }
+            // Initialize string arrays holding contrast info
+                for(int i=0;i<numTaxaChunk;i++){
+                    acontrastPairs[i][0] = "";
+                    for(int j=0;j<numTestSites;j++){
+                        afailedContrasts[i][j] = "";
+                    }
+                }
             // If requested, collect the distribution of genetic distances - we will then pick threshold to
             // to use 50 or so best contrasts. Do not parallelize this for now...
-            double maxIBDDistAdj = maxIBDDist;
-            if(bestContrasts > 0)
-            {
-                double [] dstmat2sort = new double[numTaxa*(numTaxa-1)/2];
-                int counter = 0;
-                for (int i=0; i<dm.numberOfTaxa(); i++) 
-                {
-                    for(int j=i+1;j<dm.numberOfTaxa(); j++)
-                    {
-                        if(Double.isNaN(dm.getDistance(i,j))) continue;
-                        dstmat2sort[counter] = dm.getDistance(i,j);
-                        counter++;
+                double maxIBDDistAdj = maxIBDDist;
+                if(bestContrasts > 0){
+                    double [] dstmat2sort = new double[numTaxa*(numTaxa-1)/2];
+                    int counter = 0;
+                    for (int i=0; i<dm.numberOfTaxa(); i++) {
+                        for(int j=i+1;j<dm.numberOfTaxa(); j++){
+                            if(Double.isNaN(dm.getDistance(i,j))) continue;
+                            dstmat2sort[counter] = dm.getDistance(i,j);
+                            counter++;
                     }
                 }
                 // Sort the array (in ascending order) and pick, say 50th value from the end as threshold
@@ -188,23 +180,18 @@ public class ibdfilter {
                 Arrays.sort(dstmat2sort);
                 // Debug print
                 System.out.println("Sorted dstmat2sort matrix:");
-                for(int i=0;i<dstmat2sort.length;i++)
-                {
+                for(int i=0;i<dstmat2sort.length;i++){
                     System.out.print(dstmat2sort[i]+",");
                 }
                 System.out.println();
-            
                 maxIBDDistAdj = dstmat2sort[Math.min(dstmat2sort.length-1,bestContrasts-1+dstmat2sort.length-counter)];
                 maxIBDDistAdj = Math.min(maxIBDDistAdj,maxIBDDist);
             }
- 
             // We will parallelize over i loop
             java.util.concurrent.ExecutorService executor = Executors.newFixedThreadPool(numThreads);
             
             for (int i=0; i<dm.numberOfTaxa(); i++) {
-                
                 int ir = i % numTaxaChunk;
-                
                 pFilter pflt = new pFilter(b, dm, i, maxIBDDistAdj, aTobTaxa, numTestSites, arightNuc[ir], awrongNuc[ir], 
                         diploids, ahet[ir], aminorComp[ir], aminorSame[ir], amjSame[ir], adiff[ir], acounts[ir], amean[ir],
                         acontrastPairs[ir], afailedContrasts[ir]);
@@ -298,58 +285,59 @@ public class ibdfilter {
                 //if(minorComp[k]>0 && minorRate>1) {
                 if(countBiased>1 || counttries == 0) {
                     // "Good" site
-//                    System.out.printf("%d\t%d\t%d\t%d\t%d\t%d\t%g\t",b.positions().get(k).getPosition(),het[k],
-//                            mjSame[k],minorSame[k],diff[k],minorComp[k], minorRate);
-                        bw1.write(b.positions().get(k).getPosition()+"\t"+ het[k]+"\t"+mjSame[k]+"\t"+minorSame[k]+"\t"+diff[k]+"\t"+minorComp[k]+"\t"+minorRate+"\t");
-                   for (int bs=0; bs<6; bs++) {
-                            bw1.write(rightNuc[bs][k]+":"+wrongNuc[bs][k]+"\t");
-//                        System.out.print(rightNuc[bs][k]+":"+wrongNuc[bs][k]+"\t");
+                    bw1.write(b.positions().get(k).getPosition()+"\t"+ het[k]+"\t"+mjSame[k]+"\t"+minorSame[k]+"\t"+diff[k]+"\t"+minorComp[k]+"\t"+minorRate+"\t");
+                    for (int bs=0; bs<6; bs++) {
+                        bw1.write(rightNuc[bs][k]+":"+wrongNuc[bs][k]+"\t");
                     }
-                    if(counttries>0)
+                    if(counttries > 0)
                     {
-                            bw1.write("R\n");
-//                        System.out.print("R");
+                        bw1.write("R\n");
+                        if(diff[k]==0 ) PassPos.add(Integer.toString(b.positions().get(k).getPosition()));
+                    }else{
+                        bw1.write("A\n");
                     }
-                    else
-                    {
-                            bw1.write("R\n");
-//                        System.out.print("A");   
-                        
+                    lastHm3SiteProcPos = b.positions().get(k).getPosition();
+                }else{
+                    bw1.write(b.positions().get(k).getPosition()+"\t"+ het[k]+"\t"+mjSame[k]+"\t"+minorSame[k]+"\t"+diff[k]+"\t"+minorComp[k]+"\t"+minorRate+"\t");
+                    for (int bs=0; bs<6; bs++) {
+                        bw1.write(rightNuc[bs][k]+":"+wrongNuc[bs][k]+"\t");
                     }
-//                    System.out.println();
+                    bw1.write("W\n");
+                    PassPos.add(Integer.toString(b.positions().get(k).getPosition()));
                     lastHm3SiteProcPos = b.positions().get(k).getPosition();
                 }
-                else                 {
-                  
-                            //                    System.out.printf("%d\t%d\t%d\t%d\t%d\t%d\t%g\t",b.positions().get(k).getPosition(),het[k],
-//                            mjSame[k],minorSame[k],diff[k],minorComp[k], minorRate);
-bw1.write(b.positions().get(k).getPosition()+"\t"+ het[k]+"\t"+mjSame[k]+"\t"+minorSame[k]+"\t"+diff[k]+"\t"+minorComp[k]+"\t"+minorRate+"\t");
-                        
-                        for (int bs=0; bs<6; bs++) {
-                            
-                                bw1.write(rightNuc[bs][k]+":"+wrongNuc[bs][k]+"\t");
-//                        System.out.print(rightNuc[bs][k]+":"+wrongNuc[bs][k]+"\t");
-                           
-                        }
-                        bw1.write("W\n");
-//                    System.out.print("W");
-//                    System.out.println();
-//System.out.print(failedContrasts[k]);
-lastHm3SiteProcPos = b.positions().get(k).getPosition();
-                   
-                }
-                
             }
             lastHm3SiteProcessed += numTestSites;
         }
-            System.out.println("Last HM3 position processed: "+ lastHm3SiteProcPos);
-        
-            bw.flush();
-            bw.close();
-            bw1.flush();
-            bw1.close();
+        System.out.println("Last HM3 position processed: "+ lastHm3SiteProcPos);
+        while((temp=br.readLine())!=null){
+            String pos = temp.split("\t")[1];
+            if(!PassPos.add(pos)){
+                bw2.write(temp);
+                bw2.newLine();
+                bw2.flush();
+            }
+            if(temp.split("\t")[1].equals(highPhysLimit)){
+                bw2.write(temp);
+                bw2.newLine();
+                bw2.flush();
+                break;
+            }
+        }
+        while((temp=br.readLine())!=null){
+            bw2.write(temp);
+            bw2.newLine();
+            bw2.flush();
+        }
+        bw.flush();
+        bw.close();
+        bw1.flush();
+        bw1.close();
+        bw2.flush();
+        bw2.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
+    
 }

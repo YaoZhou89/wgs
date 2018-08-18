@@ -31,7 +31,8 @@ public class LDFilter {
         this.calLD(inFile, outFile, windowSize, threshold);
     }
     
-    public static void calLD(String inFile, String outFile,int windowSize,double threshold1){
+    public static Integer[] calLD(String inFile, String outFile,int windowSize,double threshold1){
+        Integer[] num = new Integer[2];
         try {
             StringBuilder header = new StringBuilder();
             String temp;
@@ -105,6 +106,8 @@ public class LDFilter {
                     bw.newLine();
                 }
             }
+            num[0] = currentSNP;
+            num[1] = ldrm;
             System.out.println("Total SNPs:\t" +currentSNP+"\nSNPs removed:\t"+ldrm);
             bw.flush();
             bw.close();
@@ -113,6 +116,7 @@ public class LDFilter {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+        return num;
     }
     // windowSize: kb
     public static void calLD_physical(String inFile, String outFile,int windowSize,double threshold){

@@ -9,6 +9,11 @@ import gff.modifyGTF;
 import gff.splitByChr;
 import math.SegeregationTest;
 import script.GenerateScripts;
+import text.Summary;
+import vcf.Check;
+import vcf.CompareVCF;
+import vcf.GeneticDivergency;
+import vcf.ParallelVCF;
 import vcf.VcfTools;
 
 /**
@@ -36,26 +41,18 @@ public class main {
         //linear model: y = a + bx; x is depth; y is sd value.
         double a = 0, b=0,maxSD = 0; 
         // range of depth for analysis
-        int maxdepth = 0,mindepth = 0;
+        int maxdepth = 1000,mindepth = 0;
         int header = 49, subnum = 1000000;
-        String type = "null";
+        String type = "null",chr="";
         String anchor = "",suffix=".vcf";
         int numThreads = 4, minComp = 200,windowSize = 2000,bestContrasts = -1;
         double maxIBDDist = 0.02, threshold = 0.1;
         
-        String MQ = "40", FS= "10", MQRankSum = "-8", ReadPosRankSum ="-12.5",BSQRankSum="0";
+        String MQ = "40", FS= "60", MQRankSum = "-12.5", ReadPosRankSum ="-8",BSQRankSum="0",SOR="3";
         for (int i = 0; i < len; i++){
             if (null != args[i])switch (args[i]) {
                 case "--model":
                     model = args[i+1];
-                    i++;
-                    break;
-                case "--i":
-                    inFile = args[i+1];
-                    i++;
-                    break;
-                case "--o":
-                    outFile = args[i+1];
                     i++;
                     break;
                 case "--size":
@@ -82,7 +79,7 @@ public class main {
                     outFile = args[i+1];
                     i++;
                     break;
-                case "--inFile2":
+                case "--file2":
                     inFile2 = args[i+1];
                     i++;
                     break;
@@ -167,6 +164,10 @@ public class main {
                     BSQRankSum = args[i+1];
                     i++;
                     break;
+                case "--SOR":
+                    SOR = args[i+1];
+                    i++;
+                    break;
                 case "--anchorFile":
                     anchor = args[i+1];
                     i++;
@@ -195,6 +196,10 @@ public class main {
                     suffix =args[i+1];
                     i++;
                     break;
+                case "--chr":
+                    chr =args[i+1];
+                    i++;
+                    break;
                 default:
                     break;
             }
@@ -212,7 +217,42 @@ public class main {
             }else if(type.equals("LDfilter")){
                 new VcfTools(inFile,outFile,windowSize,threshold);
             }else if(type.equals("merge")){
-                new VcfTools(inFile,outFile,suffix);
+                VcfTools.mergeVCF(inFile,outFile);
+            }else if (type.equals("quality")){
+                new VcfTools(inFile,outFile,MQ,FS,MQRankSum, ReadPosRankSum,BSQRankSum,SOR);
+            }else if(type.equals("compare")){
+                new CompareVCF(inFile,inFile2,suffix);
+            }else if (type.equals("all")){
+                new ParallelVCF( inFile,  suffix, type, outFile,
+             MQ, FS, MQRankSum, ReadPosRankSum, BSQRankSum,
+             SOR, maxdepth,  mindepth,  maxSD,  windowSize,
+             threshold);
+            }else if (type.equals("check")){
+                Check.checkLastLine(inFile, suffix);
+            }else if(type.equals("addST")){
+                Check.addST(inFile,outFile,MQ);
+            }else if(type.equals("deleteST")){
+                Check.deleteST(inFile,outFile,MQ);
+            }else if(type.equals("subset")){
+                VcfTools.getSub(inFile, outFile, ExSize, subnum);
+            }else if(type.equals("DepthFilter")){
+                new VcfTools(inFile,outFile,a,b,maxSD,mindepth,maxdepth);
+            }else if(type.equals("rsd")){
+                new VcfTools(inFile,outFile,maxSD,suffix);
+            }else if (type.equals("GeneticDivergency")){
+                GeneticDivergency.calPair(inFile, outFile);
+            }else if(type.equals("splitByChr")){
+                new VcfTools(inFile,ExSize);
+            }else if(type.equals("chrs")){
+                VcfTools.subChr(inFile, chr, outFile);
+            }
+            else{
+                new VcfTools(inFile,outFile,type,maxSD);
+            }
+        }
+        if(model.equals("txt")){
+            if(type.equals("summary")){
+                new Summary().readData(inFile,suffix);
             }
         }
         if(model.equals("gff")){

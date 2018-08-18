@@ -20,7 +20,10 @@ public class SegeregationTest {
     public SegeregationTest(String inFile, String outFile){
         this.getST(inFile, outFile);
     }
-    private void getST(String inFile, String outFile){
+    public SegeregationTest(){
+    }
+    public Integer[] getST(String inFile, String outFile){
+        Integer[] num = new Integer[2];
         try {
             System.out.println(">>>>>>>>>>>>>>>>Segregation test filter<<<<<<<<<<<<<<<<<");
             BufferedReader br;
@@ -34,6 +37,7 @@ public class SegeregationTest {
                 if(temp.startsWith("#")){
                     bw.write(temp);
                     bw.newLine();
+                    bw.flush();
                 }else{
                     snp ++;
                     if (snp % 100000==0){
@@ -64,6 +68,7 @@ public class SegeregationTest {
                         if(pv < 0.01){
                             bw.write(temp);
                             bw.newLine();
+                            bw.flush();
                         }else{
                             rmsnp++;
                         }
@@ -75,10 +80,13 @@ public class SegeregationTest {
             }
             System.out.println("Total SNPs:\t"+snp);
             System.out.println("SNPs removed:\t"+rmsnp);
+            num[0] = snp;
+            num[1] = rmsnp;
             bw.flush();
             bw.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+        return num;
     }
 }
