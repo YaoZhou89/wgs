@@ -6,9 +6,14 @@
 package script;
 
 import io.IOUtils;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,7 +28,7 @@ public class GenerateScripts {
             this.getRScripts();
         }
         if(model.equals("model2")){
-            this.getIGDBHPCscript();
+            runbgzip(inFile,outFile);
         }
         if(model.equals("model3")){
             this.getMacscript();
@@ -69,42 +74,7 @@ public class GenerateScripts {
                 ex.printStackTrace();
             };
     }
-    public void getIGDBHPCscript(){
-        StringBuilder header = new StringBuilder();
-        header.append("#BSUB -L /bin/bash\n" +
-            "#BSUB -J step2\n" +
-            "#BSUB -n 1\n" +
-            "#BSUB -e %J.err\n" +
-            "#BSUB -o %J.out\n" +
-            "#BSUB -q vvl\n");
-        File dir = new File("Scripts");
-        if(!dir.exists()) dir.mkdir();
-        String[] chr = {"A","AB","ABD","D"};
-        String name = null;
-        try {
-            BufferedWriter bwr = IOUtils.getTextWriter(dir.toString()+"/wheat_step2.sh");
-            for(int i = 1;i<5;i++){
-                for(int j = 0;j<chr.length;j++){
-                    name = "Step2_scripts_"+chr[j]+"_"+i+".script";
-                    bwr.write("bsub < "+name +" &");
-                    bwr.newLine();
-                    bwr.newLine();
-                    BufferedWriter bw = IOUtils.getTextWriter(dir.toString()+"/"+name);
-                    bw.write(header.toString());
-                    bw.write("vcftools --vcf ~/data/Evo/"+chr[j]+"/"+chr[j]+".all.mr.recode.vcf "
-                        + "--keep ~/data/Evo/"+chr[j]+"/group"+i+".txt"+"  --min-alleles 2 --max-alleles 2 "
-                        +"--recode --recode-INFO-all --out ~/data/Evo/"+chr[j]+"/"+chr[j]+".group"+i);
-                    bw.newLine();
-                    bw.flush();
-                    bw.close();   
-                }
-            }
-            bwr.flush();
-            bwr.close();
-        } catch (IOException ex) {
-                ex.printStackTrace();
-        }
-    }
+   
     public void getMapping(String inFile,String outFile){
         StringBuilder header = new StringBuilder();
         header.append("#!/bin/bash\n");
@@ -324,6 +294,74 @@ public class GenerateScripts {
             bws.write(command.toString());
             bws.write("wait");
             bws.newLine();
+            bws.flush();
+            bws.close();
+            
+        } catch (IOException ex) {
+                ex.printStackTrace();
+        }
+    }
+    public void runbgzip(String inFile, String outFile){
+        StringBuilder header = new StringBuilder();
+        header.append("#!/bin/bash\n");
+        
+        File dir = new File(outFile);
+        if(!dir.exists()) dir.mkdir();
+//        File Bamdir = new File(outFile+"/ref_bam");
+//        if(!Bamdir.exists()) Bamdir.mkdir();
+        File test = new File (inFile);
+        File[] fs = IOUtils.listRecursiveFiles(test);
+        File[] subFs = IOUtils.listFilesEndsWith(fs, ".gz");
+//        File[] reFs = getPath(subFs);  
+        StringBuilder command =new StringBuilder();
+        BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+"bgzip"+".sh");
+        try {
+            bws.write(header.toString());
+            for(File entry : subFs){
+                String[] names = entry.toString().split("/");
+                String name = names[names.length-1].split("\\.")[0];
+                for(int i = 1; i<43; i++){
+                    bws.write("bgzip "+outFile+"/"+name+"/"+i+".vcf");
+                    bws.newLine();
+                    bws.write("tabix "+outFile+"/"+name+"/"+i+".vcf.gz");
+                    bws.newLine();
+                }
+            }
+            bws.flush();
+            bws.close();
+            
+        } catch (IOException ex) {
+                ex.printStackTrace();
+        }
+    }
+    public static void mergeLineage(String inFile, String outFile,String chr){
+        StringBuilder header = new StringBuilder();
+        header.append("#!/bin/bash\n");
+        header.append("gatk CombineGVCFs \\\n" +
+"   -R /data1/home/yaozhou/data/ref/wheat/genome/num/ab_iwgscV1.fa \\\n");
+        File dir = new File(outFile);
+        if(!dir.exists()) dir.mkdir();
+//        File Bamdir = new File(outFile+"/ref_bam");
+//        if(!Bamdir.exists()) Bamdir.mkdir();
+        File test = new File (inFile);
+        File[] fs = IOUtils.listRecursiveFiles(test);
+        File[] subFs = IOUtils.listFilesEndsWith(fs, ".gz");
+//        File[] reFs = getPath(subFs);  
+        StringBuilder command =new StringBuilder();
+        BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+chr+".sh");
+        try {
+            
+            bws.write(header.toString());
+            for(File entry : subFs){
+                String[] names = entry.toString().split("/");
+                String name = names[names.length-1].split("\\.")[0];
+                if(!name.equals(chr)){
+                    continue;
+                }
+                bws.write("-variant "+ entry.toString()+" \\");
+                bws.newLine();
+            }
+            bws.write(" -O "+outFile+"/"+chr+".lineage.g.vcf.gz");
             bws.flush();
             bws.close();
             

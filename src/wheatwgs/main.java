@@ -15,6 +15,7 @@ import vcf.CompareVCF;
 import vcf.GeneticDivergency;
 import vcf.ParallelVCF;
 import vcf.VcfTools;
+import vcf.vcf;
 
 /**
  *
@@ -29,7 +30,7 @@ public class main {
         long startTime = System.currentTimeMillis();
         int len = args.length;
         String model = "test";
-        String inFile = "",keyFileName = "",inFile2 = null;
+        String inFile = "",keyFileName = "",inFile2 = "";
         String outFile="",names = "";
         int ExSize = 100000;
         String RE1="GGATCC",RE2="CCGG";
@@ -243,8 +244,13 @@ public class main {
                 GeneticDivergency.calPair(inFile, outFile);
             }else if(type.equals("splitByChr")){
                 new VcfTools(inFile,ExSize);
+//                VcfTools.splitByChr(inFile, outFile, new vcf());
             }else if(type.equals("chrs")){
                 VcfTools.subChr(inFile, chr, outFile);
+            }else if (type.equals("winDepth")){
+                new VcfTools(inFile,outFile,windowSize);
+            }else if (type.equals("splitByChrs")){
+                VcfTools.splitByChrs(inFile, outFile);
             }
             else{
                 new VcfTools(inFile,outFile,type,maxSD);
@@ -265,7 +271,12 @@ public class main {
             }
         }
         if(model.equals("GenerateScripts")){
-            new GenerateScripts(inFile,outFile,type);
+            if(!chr.equals("")){
+                GenerateScripts.mergeLineage(inFile, outFile, chr);
+            }else{
+                new GenerateScripts(inFile,outFile,type);
+            }
+            
         }
         long endTime = System.currentTimeMillis();
         int timeLast = (int) ((endTime-startTime)/1000);

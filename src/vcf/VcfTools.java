@@ -5,6 +5,8 @@
  */
 package vcf;
 
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.tribble.index.tabix.TabixIndex;
 import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -20,6 +22,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import math.SegeregationTest;
 import htsjdk.tribble.readers.TabixReader;
+import htsjdk.variant.variantcontext.VariantContextUtils;
+
 //import java.lang.Object;
 //import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.inference.WilcoxonSignedRankTest;
@@ -32,6 +36,9 @@ import org.apache.commons.math3.stat.inference.WilcoxonSignedRankTest;
 public class VcfTools {
     int SNPsAll = 0;
     int SNPsFail = 0;
+    public VcfTools(){
+        
+    }
     public VcfTools(String inFile,String outFile){
         this.getABD(inFile,outFile);
     }
@@ -68,13 +75,49 @@ public class VcfTools {
         
         
     }
-
+    public VcfTools(String inFile,String outFile,Integer windowSize){
+        vcf a = new vcf();
+        a.initialVCFread(inFile);
+//        List<String[]> res = new ArrayList(a.sampleSize + 3);
+        String[] temp = new String[a.sampleSize + 3];
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        try{
+        while(!a.checkEnd()){
+            a.readVCFBlock(windowSize);
+            temp[0] = a.getChr();
+            temp[1] = a.getStartPos();
+            temp[2] = a.getendPos();
+            int[][]aa =  blockHet(a);
+            for(int i = 0;i<a.sampleSize;i++){
+                temp[i+3] = Double.toString(aa[0][i]/((double)aa[1][i]));
+            }
+            writeString(temp,bw);
+        }
+        bw.flush();
+        bw.close();
+        } catch (Exception e){
+                    
+        }
+        
+       }
+    private void writeString(String[] a,BufferedWriter bw){
+        try {
+            for(int i = 0; i< a.length-1; i++){
+                bw.write(a[i]);
+                bw.write("\t");
+            }
+            bw.write(a[a.length-1]);
+            bw.newLine();
+        } catch (IOException ex) {
+                Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+            }
+    }
     public VcfTools(String anchor, String inFile, String outFile, int minComp, double maxIBDDist, 
         int windowSize, int numThreads, int bestContrasts){
         ibdfilter.PfilterBasedOnIBD(anchor, inFile, outFile, minComp, maxIBDDist, windowSize, numThreads, bestContrasts);
     }
     public VcfTools(String inFile, String outFile,int windowSize, double threshold){   
-        LDFilter.calLD(inFile,outFile,windowSize,threshold);
+        LD.calLD(inFile,outFile,windowSize,threshold);
     }
     public VcfTools(String inFile,String outFile,double se,String suffix){
         this.rsdFilter(inFile,outFile,se,suffix);
@@ -119,7 +162,7 @@ public class VcfTools {
             bw.flush();
             inFile = outFile;
             outFile = inFile.replace(".ST"+MQ+".vcf",".LD"+MQ+".vcf");
-            SNPnum = LDFilter.calLD(inFile,outFile,windowSize,0.1);
+            SNPnum = LD.calLD(inFile,outFile,windowSize,0.1);
             bw.write(SNPnum[0]+"\t"+SNPnum[1]);
             bw.newLine();
             bw.flush();
@@ -215,6 +258,33 @@ public class VcfTools {
         }
         return a;
     }
+    public static void splitByChr(String inFile,String outFile,vcf a){
+        a.initialVCFread(inFile);
+        File byChr = new File(outFile+"/ByChr");
+        if(!byChr.exists()) byChr.mkdirs();
+        while(!a.checkEnd()){
+            a.readVCFByChr();
+            String outFiles = outFile+"/ByChr/"+a.chrom+".vcf";
+            a.initialVCFwrite(outFiles);
+            a.writeVCF();
+            a.close();
+        }
+    }
+    public static void splitByChrs(String inFile,String outFile){
+        File input = new File(inFile);
+        File[] ins = IOUtils.listRecursiveFiles(input);
+        File[] subFile = IOUtils.listFilesEndsWith(ins, ".gz");
+        for (File fs : subFile){
+            String in = fs.getAbsolutePath().toString();
+            System.out.println("Now analyzing: "+in);
+            String[] names = in.split("/");
+//            System.out.println(in);
+            String ind = names[names.length-1].split("\\.")[0];
+            String out = outFile+"/"+ind;
+            splitByChr(in,out);
+        }
+    }
+        
     private void getFilterd(String inFile,String outFile,String MQ, String FS, String MQRankSum
     , String ReadPosRankSum , String BSQRankSum,String SOR){
         try {
@@ -443,7 +513,6 @@ public class VcfTools {
             ex.printStackTrace();
         }
     }
-
     private void getABD(String inFile, String outFile) {
         BufferedReader vcf;
         BufferedWriter nvcf,bed,stat,Avcf;
@@ -586,6 +655,47 @@ public class VcfTools {
         } catch (IOException ex) {
             System.out.println(size);
             ex.printStackTrace();
+        }
+    }
+    private static void splitByChr(String inFile, String outFile) {
+        try {
+            File outf = new File(outFile);
+            if(!outf.exists()) outf.mkdirs();
+            TabixReader vcf = new TabixReader(inFile);
+            String temp = "";
+            String chr = "";
+            BufferedWriter bw = null ;
+            StringBuilder head = new StringBuilder();
+            while((temp = vcf.readLine())!=null){
+                if(temp.startsWith("#")){
+                    head.append(temp);
+                    head.append("\n");
+                }else{
+                    String[] temps = temp.split("\t");
+                    if(temps[0].equals(chr)){
+                        bw.write(temp);
+                        bw.newLine();
+                    }else{
+                        if(bw!=null){
+                            bw.flush();
+                            bw.close(); 
+                        }
+                        System.out.println("Chromosome " + chr + " finished!");
+                        chr = temps[0];
+                        String out = outFile+"/"+chr+".vcf";
+                        bw = IOUtils.getTextWriter(out);
+                        System.out.println("Chrmosome: " + chr + " Starting");
+                        bw.write(head.toString());
+                        bw.write(temp);
+                        bw.newLine();
+                    }
+                }
+            }
+            System.out.println("Chromosome " + chr + " finished!");
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null,ex);
         }
     }
     private void getDepthFilterd(String inFile,String outFile, double a, double b, double sd,
@@ -840,7 +950,6 @@ public class VcfTools {
             BufferedWriter vcfhet = IOUtils.getTextWriter(outFile);
             BufferedWriter het = IOUtils.getTextWriter(hetFile);
             BufferedWriter het1 = IOUtils.getTextWriter(inFile+".perSNP.het");
-//            BufferedWriter het2 = IOUtils.getTextWriter(inFile + ".IndHet");
             String temp = null;
             String tem[] = null;
             int a0 = 0, a1 = 0, a2 = 0, an = 0;
@@ -914,6 +1023,36 @@ public class VcfTools {
             ex.printStackTrace();
         }
     }
+    private static int[][] blockHet(vcf inVCF){
+        // string: het site rate per individual
+        int[][] res = new int[2][inVCF.sampleSize];
+        for (int i = 0; i< res[0].length;i++){
+            res[1][i] = 1;
+            res[0][i] = 0;
+        }
+//        String temp = null;
+//        String tem[] = null;
+        for(int i = 0;i < inVCF.genotype.size(); i++){
+           res = getHetres(inVCF.genotype.get(inVCF.ID.get(i)),res);
+        }     
+        
+        return res;
+    }
+    private static int[][] getHetres(String[] geno, int[][] res){
+        int[][] res0 = new int[2][res[0].length];
+        for (int i = 0; i < res[0].length; i++){
+            if(geno[i].startsWith("0/1")){
+                res[0][i]++;
+                res[1][i]++;
+            }else if(geno[i].startsWith(".")){
+                
+            }else{
+                res[1][i]++;
+            }
+        }
+        return res;
+    }
+    
     private void getHetStat(String inFile,String outFile){
         try {
             System.out.println("Now analyzing the heterozyous....");
