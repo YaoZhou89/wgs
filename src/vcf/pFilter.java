@@ -99,8 +99,8 @@ public class pFilter implements Runnable {
                             if(t1ba[0]==t2ba[0] || t1ba[0]==t2ba[1]) {rightNuc[t1ba[0]][k]++;} else {wrongNuc[t1ba[0]][k]++;}
                             if(t1ba[1]==t2ba[0] || t1ba[1]==t2ba[1]) {rightNuc[t1ba[1]][k]++;} else {wrongNuc[t1ba[1]][k]++;}
                             // Uncomment two next lines to ignire hets
-                            //if(t1b!=diploids[0][k] && t1b!=diploids[2][k]) continue;
-                            //if(t2b!=diploids[0][k] && t2b!=diploids[2][k]) continue;
+                            if(t1b!=diploids[0][k] && t1b!=diploids[2][k]) continue;
+                            if(t2b!=diploids[0][k] && t2b!=diploids[2][k]) continue;
                             if(isHeterozygous(t1b)  || isHeterozygous(t2b)) het[k]++;
                             if(t1b==diploids[2][k] || t2b==diploids[2][k])  {
                                 minorComp[k]++;

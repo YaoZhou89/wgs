@@ -5,6 +5,7 @@
  */
 package wheatwgs;
 
+import fasta.Genome;
 import gff.modifyGTF;
 import gff.splitByChr;
 import math.SegeregationTest;
@@ -12,7 +13,9 @@ import script.GenerateScripts;
 import text.Summary;
 import vcf.Check;
 import vcf.CompareVCF;
+import vcf.Frequence;
 import vcf.GeneticDivergency;
+import vcf.IBD;
 import vcf.ParallelVCF;
 import vcf.VcfTools;
 import vcf.vcf;
@@ -46,9 +49,9 @@ public class main {
         int header = 49, subnum = 1000000;
         String type = "null",chr="";
         String anchor = "",suffix=".vcf";
-        int numThreads = 4, minComp = 200,windowSize = 2000,bestContrasts = -1;
+        int numThreads = 24, minComp = 200,windowSize = 2000,bestContrasts = -1;
         double maxIBDDist = 0.02, threshold = 0.1;
-        
+        int start = 0, end =1;
         String MQ = "40", FS= "60", MQRankSum = "-12.5", ReadPosRankSum ="-8",BSQRankSum="0",SOR="3";
         for (int i = 0; i < len; i++){
             if (null != args[i])switch (args[i]) {
@@ -201,6 +204,14 @@ public class main {
                     chr =args[i+1];
                     i++;
                     break;
+                case "--start":
+                    start =Integer.parseInt(args[i+1]);
+                    i++;
+                    break;
+                case "--end":
+                    end =Integer.parseInt(args[i+1]);
+                    i++;
+                    break;
                 default:
                     break;
             }
@@ -209,11 +220,16 @@ public class main {
             String[] temp = inFile.split("/");
             outFile = temp[temp.length -1].split("\\.")[0];
         }
+        if(model.equals("fasta")){
+            new Genome().readByChromosome(inFile,start,end);
+        }
         if(model.equals("vcf")){
             // Segeragation test
             if(type.equals("ST")){
                 new SegeregationTest(inFile,outFile);
             }else if(type.equals("IBDfilter")){
+//                new IBD().ibdFilterparrallel(anchor, inFile, outFile, minComp, maxIBDDist, windowSize);
+//                new IBD().ibdFilter(anchor, inFile, outFile, minComp, maxIBDDist, windowSize);
                 new VcfTools(anchor, inFile, outFile, minComp, maxIBDDist, windowSize, numThreads, bestContrasts);
             }else if(type.equals("LDfilter")){
                 new VcfTools(inFile,outFile,windowSize,threshold);
@@ -251,6 +267,8 @@ public class main {
                 new VcfTools(inFile,outFile,windowSize);
             }else if (type.equals("splitByChrs")){
                 VcfTools.splitByChrs(inFile, outFile);
+            }else if (type.equals("check2Vcf")){
+                new CompareVCF().compare(inFile, outFile);
             }
             else{
                 new VcfTools(inFile,outFile,type,maxSD);
@@ -269,6 +287,9 @@ public class main {
             }else if(type.equals("splitByChr")){
                 new splitByChr(inFile);
             }
+        }
+        if(model.equals("frequence")){
+            Frequence.sumFre(inFile, suffix, outFile);
         }
         if(model.equals("GenerateScripts")){
             if(!chr.equals("")){

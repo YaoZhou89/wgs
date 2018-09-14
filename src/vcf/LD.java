@@ -5,6 +5,7 @@
  */
 package vcf;
 
+import htsjdk.tribble.readers.TabixReader;
 import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -38,7 +39,7 @@ public class LD {
             String temp;
             String[] tem;
             Double threshold = threshold1 + 1/windowSize;
-            BufferedReader br = IOUtils.getTextReader(inFile);
+            TabixReader br = new TabixReader(inFile) ;
             BufferedWriter bw = IOUtils.getTextWriter(outFile);
 //            BufferedWriter bw1 = IOUtils.getTextWriter(outFile+".cor.txt");
 //            StringBuilder sites = new StringBuilder();

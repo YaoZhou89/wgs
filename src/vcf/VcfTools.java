@@ -291,15 +291,15 @@ public class VcfTools {
             System.out.printf("Filtering by FS > %s; MQ < %s; MQRankSum < %s; ReadPosRankSum < %s;"
                     + " BSQRankSum < %s; SOR > %s ...\n",FS,MQ,MQRankSum,ReadPosRankSum,
                   BSQRankSum,SOR);
-            BufferedReader vcf;
-            if(inFile.endsWith("gz")){
-                vcf = IOUtils.getTextGzipReader(inFile);
-//                outFile = inFile.replace(".vcf.gz",".filtered.vcf");
-            }
-            else {
-                vcf = IOUtils.getTextReader(inFile);
-//                outFile = inFile.replace(".vcf",".filtered.vcf");
-            }
+            TabixReader vcf = new TabixReader(inFile);
+//            if(inFile.endsWith("gz")){
+//                vcf = IOUtils.getTextGzipReader(inFile);
+////                outFile = inFile.replace(".vcf.gz",".filtered.vcf");
+//            }
+//            else {
+//                vcf = IOUtils.getTextReader(inFile);
+////                outFile = inFile.replace(".vcf",".filtered.vcf");
+//            }
             String mq = "70", fs = "40", mqranksum = "-12.5", readposranksum = "-8",
                     bqrs = "0",sor="1";
             String temp = null;
@@ -1027,13 +1027,13 @@ public class VcfTools {
         // string: het site rate per individual
         int[][] res = new int[2][inVCF.sampleSize];
         for (int i = 0; i< res[0].length;i++){
-            res[1][i] = 1;
+            res[1][i] = 0;
             res[0][i] = 0;
         }
 //        String temp = null;
 //        String tem[] = null;
         for(int i = 0;i < inVCF.genotype.size(); i++){
-           res = getHetres(inVCF.genotype.get(inVCF.ID.get(i)),res);
+           res = getHetres(inVCF.genotype.get(i),res);
         }     
         
         return res;

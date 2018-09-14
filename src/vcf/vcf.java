@@ -27,11 +27,15 @@ public class vcf {
     int snpNum = 0;
     Set chr = new HashSet();
     String chrom ="";
-    List<String> ID = new ArrayList();
+//    List<String> ID = new ArrayList();
     int sampleSize;
     String[] sample;
-    Map<String , String[]> genotype = new HashMap();
-    Map<String , String[]> info = new HashMap();
+//    Map<String , String[]> genotype = new HashMap();
+    List<String[]> genotype = new ArrayList();
+    Map<Integer,Integer> posMap = new HashMap();
+    List<Integer> pos = new ArrayList();
+    List<String[]> info = new ArrayList();
+//    Map<String , String[]> info = new HashMap();
     StringBuilder header = new StringBuilder();
     TabixReader br;
     BufferedWriter bw;
@@ -72,57 +76,54 @@ public class vcf {
     public void readVCFByChr(){
         genotype.clear();
         String temp = "";
-        ID.clear();
         info.clear();
-        
+        snpNum = 0;
+        int i = 0;
         try {
             String[] te = null;
-            int i = 0;
-            String pos = "";
-            
             if(this.lineOne != null){
-                i++;
-                this.snpNum++;
-                te = this.lineOne.split("\t");
-                pos = te[0]+"_"+te[1];
-                this.ID.add(pos);
+                te = lineOne.split("\t");
                 String[] ge = new String[sampleSize];
-                String[] information = new String[7];
-                for(int j = 0; j<7;j++){
-                    information[j] = te[j+2];
+                String[] information = new String[9];
+                for(int j = 0; j<9;j++){
+                    information[j] = te[j];
                 }
-                this.info.put(pos,information);
+                info.add(information);
                 for(int j = 0; j< this.sampleSize;j++){
                     ge[j] = te[j+9];
                 }
-                this.genotype.put(pos, ge);
+                genotype.add(ge);
+                snpNum++;
+                pos.add(Integer.parseInt(te[1]));
+                posMap.put(Integer.parseInt(te[1]),i);
+                i++;
             }
             while((temp = this.br.readLine())!=null){
                 te = temp.split("\t");
-                if(this.first) {
-                    this.first = false;
-                    this.chr.add(te[0]) ;
-                    this.chrom =te[0];
+                if(first) {
+                    first = false;
+                    chr.add(te[0]) ;
+                    chrom =te[0];
                 }
-                if(this.chr.add(te[0])){
-                    this.lineOne = temp;
+                if(chr.add(te[0])){
+                    lineOne = temp;
                     break;
                 }
-                this.chrom =te[0];
-                i++;
-                this.snpNum++;
-                pos = te[0]+"_"+te[1];
-                this.ID.add(pos);
-                String[] ge = new String[this.sampleSize];
-                String[] information = new String[7];
-                for(int j = 0; j<7;j++){
-                    information[j] = te[j+2];
+                chrom =te[0];
+                snpNum++;
+                String[] ge = new String[sampleSize];
+                String[] information = new String[9];
+                for(int j = 0; j<9;j++){
+                    information[j] = te[j];
                 }
-                this.info.put(pos,information);
-                for(int j = 0; j< this.sampleSize;j++){
+                info.add(information);
+                for(int j = 0; j< sampleSize;j++){
                     ge[j] = te[j+9];
                 }
-                this.genotype.put(pos, ge);
+                genotype.add(ge);
+                pos.add(Integer.parseInt(te[1]));
+                posMap.put(Integer.parseInt(te[1]), i);
+                i++;
             }
             if(temp==null) this.end = true;
         } catch (IOException ex) {
@@ -132,62 +133,59 @@ public class vcf {
     public void readVCFBlock(int windowSize){
         genotype.clear();
         String temp = "";
-        ID.clear();
         info.clear();
+        int i=0;
         try {
             String[] te = null;
-            int i = 0;
-            String pos = "";
             if(this.lineOne != null){
-                i++;
-                this.snpNum++;
-                te = this.lineOne.split("\t");
-                pos = te[0]+"_"+te[1];
-                this.ID.add(pos);
+                snpNum++;
+                te = lineOne.split("\t");
+                pos.add(Integer.parseInt(te[1]));
+                posMap.put(Integer.parseInt(te[1]), i);
                 String[] ge = new String[sampleSize];
-                String[] information = new String[7];
-                for(int j = 0; j<7;j++){
-                    information[j] = te[j+2];
+                String[] information = new String[9];
+                for(int j = 0; j<9;j++){
+                    information[j] = te[j];
                 }
-                this.info.put(pos,information);
+                info.add(information);
                 for(int j = 0; j< this.sampleSize;j++){
                     ge[j] = te[j+9];
                 }
-                this.genotype.put(pos, ge);
+                genotype.add(ge);
                 startPos = te[1];
+                i++;
             }
             while((temp = this.br.readLine())!=null){
                 te = temp.split("\t");
-                if(this.first) {
-                    this.first = false;
-                    this.chr.add(te[0]) ;
-                    this.chrom =te[0];
+                if(first) {
+                    first = false;
+                    chr.add(te[0]) ;
+                    chrom =te[0];
                     startPos = te[1];
                 }
-                if(this.chr.add(te[0])){
-                    this.chrom =te[0];
-                    this.lineOne = temp;
+                if(chr.add(te[0])){
+                    lineOne = temp;
                     break;
                 }
+                pos.add(Integer.parseInt(te[1]));
+                posMap.put(Integer.parseInt(te[1]),i);
                 i++;
-                this.snpNum++;
+                snpNum++;
                 endPos = te[1];
                 if((Integer.parseInt(endPos) - Integer.parseInt(startPos)) > windowSize){
                     this.lineOne = temp;
                     break;
                 }
-                pos = te[0]+"_"+te[1];
-                this.ID.add(pos);
                 String[] ge = new String[this.sampleSize];
-                String[] information = new String[7];
-                for(int j = 0; j<7;j++){
-                    information[j] = te[j+2];
+                String[] information = new String[9];
+                for(int j = 0; j<9;j++){
+                    information[j] = te[j];
                 }
-                this.info.put(pos,information);
+                info.add(information);
                 for(int j = 0; j< this.sampleSize;j++){
                     ge[j] = te[j+9];
                 }
-                this.genotype.put(pos, ge);
+                genotype.add(ge);
             }
             if(temp==null) this.end = true;
         } catch (IOException ex) {
@@ -205,20 +203,35 @@ public class vcf {
     
     public void writeVCF(){
         try {
-            String pos = "";
-            for(int i = 0; i<ID.size();i++){
-                pos = ID.get(i);
-                bw.write(pos.replace("_","\t"));
-                bw.write("\t");
-                bw.write(toString(info.get(pos)));
-                bw.write("\t");
-                bw.write(toString(genotype.get(pos)));
+            for(int i = 0; i< genotype.size();i++){
+                for(int j = 0;j<9;j++){
+                    bw.write(info.get(i)[j]+"\t");
+                }
+                for(int j = 0; j< sampleSize-1;j++){
+                    bw.write(genotype.get(i)[j]+"\t");
+                }
+                bw.write(genotype.get(i)[sampleSize-1]);
                 bw.newLine();
                 bw.flush();
             }
         } catch (IOException ex) {
             Logger.getLogger(vcf.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+    public void writeVCF(int pos){
+        try{
+            for(int j = 0;j<9;j++){
+                bw.write(info.get(pos)[j]+"\t");
+            }
+            for(int j = 0; j< sampleSize-1;j++){
+                bw.write(genotype.get(pos)[j]+"\t");
+            }
+            bw.write(genotype.get(pos)[sampleSize-1]);
+            bw.newLine();
+            bw.flush();
+        }catch (Exception e){
+            
+        }        
     }
     public void close(){
         try {
@@ -243,12 +256,7 @@ public class vcf {
     public String getChr(){
         return this.chrom;
     }
-    public Map getGeno(){
-        return this.genotype;
-    }
-    public List getPos(){
-        return this.ID;
-    }
+    
     public int getSampleSize(){
         return this.sampleSize;
     }

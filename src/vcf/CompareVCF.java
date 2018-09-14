@@ -9,8 +9,11 @@ import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -20,6 +23,9 @@ public class CompareVCF {
     public CompareVCF(String in1, String in2, String suffix){
         this.compareVCF(in1,in2,suffix);
     }
+    public CompareVCF(){
+    }
+    
     public void compareVCF(String in1, String in2, String suffix){
         File inFILE = new File(in1);
         File[] a = IOUtils.listRecursiveFiles(inFILE);
@@ -71,6 +77,37 @@ public class CompareVCF {
             System.out.println("Number of CS SNPs counted:\t"+count);
         }catch(Exception e){
             
+        }
+    }
+    public void compare(String in1, String in2){
+        try {
+            BufferedReader br1 = IOUtils.getTextReader(in1);
+            BufferedReader br2 = IOUtils.getTextReader(in2);
+            Set S1 = new HashSet();
+            String temp;
+            String[] te = null;
+            while((temp = br1.readLine())!=null){
+                if(temp.startsWith("#")) continue;
+                te = temp.split("\t");
+                S1.add(te[1]);
+            }
+            BufferedWriter bw = IOUtils.getTextWriter(in2.replace(".vcf", ".unique.vcf"));
+            while((temp = br2.readLine())!=null){
+                if(temp.startsWith("#")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    te = temp.split("\t");
+                    if(S1.add(te[1])){
+                        bw.write(temp);
+                        bw.newLine();
+                    }
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(CompareVCF.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }

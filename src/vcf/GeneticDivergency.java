@@ -60,7 +60,7 @@ public class GeneticDivergency {
                                     GD[i][j] +=2 ;
                                     if(a.equals("0/0")){
                                         if(b.equals("0/1")) {
-                                            GD[j][i]+=1.5; 
+                                            GD[j][i]+=0.5; 
                                         }else if(b.equals("1/1")){
                                                 GD[j][i]+=2; 
                                         }else{
@@ -70,7 +70,7 @@ public class GeneticDivergency {
                                         if(b.equals("0/1")) {
                                             GD[j][i]+=0.5; 
                                         }else {
-                                                GD[j][i]+=1.5; 
+                                                GD[j][i]+=0.5; 
                                         }
                                     }else{
                                         if(b.equals("0/1")) {
