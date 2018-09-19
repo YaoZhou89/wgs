@@ -133,6 +133,10 @@ public class main {
                     maxSD = Double.valueOf(args[i+1]);
                     i++;
                     break;
+                case "--r":
+                    maxSD = Double.valueOf(args[i+1]);
+                    i++;
+                    break; 
                 case "--het":
                     het = true;
                     break;
@@ -267,8 +271,10 @@ public class main {
                 new VcfTools(inFile,outFile,windowSize);
             }else if (type.equals("splitByChrs")){
                 VcfTools.splitByChrs(inFile, outFile);
-            }else if (type.equals("check2Vcf")){
+            }else if (type.equals("check2vcf")){
                 new CompareVCF().compare(inFile, outFile);
+            }else if (type.equals("twoStatic")){
+                new Check().getTwo(inFile);
             }
             else{
                 new VcfTools(inFile,outFile,type,maxSD);

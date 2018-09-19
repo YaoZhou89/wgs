@@ -10,6 +10,8 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -102,6 +104,47 @@ public class Check {
             bw.close();
         } catch (IOException ex) {
             
+        }
+    }
+    public void getTwo(String inFile){
+        try {
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            String temp = "";
+            String[] te = null;
+            int[] a = new int[4];
+            
+            int b = 0;
+            int c = 0;
+            int snp = 0;
+            while ((temp = br.readLine())!=null){
+               if(!temp.startsWith("#")) {
+                    snp++;
+                    for (int i = 0; i<4 ;i++){
+                        a[i] = 0;
+                    }
+                    te = temp.split("\t");
+                    for (int i = 0; i < te.length-9;i++){
+                        if(te[i+9].startsWith("0/0")){
+                            a[0]++;
+                        }else if (te[i+9].startsWith("0/1")){
+                            a[1]++;
+                        }else if (te[i+9].startsWith("1/1")){
+                            a[2]++;
+                        }else{
+                            a[3]++;
+                        }
+                    }
+                    for (int i = 0; i< 4 ; i++){
+                        if(a[1]>1) b++;
+                    }
+               }
+            }
+            System.out.println("total SNP is:\t" +snp);
+            System.out.println("Number of het SNP in more than two individuals: "+b);
+            System.out.println("Minor allele in homozygous individuals: "+c);
+
+        } catch (IOException ex) {
+            Logger.getLogger(Check.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     

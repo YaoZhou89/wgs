@@ -5,6 +5,7 @@
  */
 package vcf;
 
+import htsjdk.tribble.readers.TabixReader;
 import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -81,8 +82,8 @@ public class CompareVCF {
     }
     public void compare(String in1, String in2){
         try {
-            BufferedReader br1 = IOUtils.getTextReader(in1);
-            BufferedReader br2 = IOUtils.getTextReader(in2);
+            TabixReader br1 = new TabixReader(in1);
+            TabixReader br2 = new TabixReader(in2);
             Set S1 = new HashSet();
             String temp;
             String[] te = null;
@@ -91,7 +92,7 @@ public class CompareVCF {
                 te = temp.split("\t");
                 S1.add(te[1]);
             }
-            BufferedWriter bw = IOUtils.getTextWriter(in2.replace(".vcf", ".unique.vcf"));
+            BufferedWriter bw = IOUtils.getTextWriter(in2.replace(".vcf.gz", ".unique.vcf"));
             while((temp = br2.readLine())!=null){
                 if(temp.startsWith("#")){
                     bw.write(temp);

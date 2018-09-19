@@ -5,6 +5,7 @@
  */
 package math;
 
+import htsjdk.tribble.readers.TabixReader;
 import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -26,10 +27,10 @@ public class SegeregationTest {
         Integer[] num = new Integer[2];
         try {
             System.out.println(">>>>>>>>>>>>>>>>Segregation test filter<<<<<<<<<<<<<<<<<");
-            BufferedReader br;
+            TabixReader br = new TabixReader(inFile);
             BufferedWriter bw;
-            if(inFile.endsWith(".gz")) br = IOUtils.getTextGzipReader(inFile);
-            else br = IOUtils.getTextReader(inFile);
+//            if(inFile.endsWith(".gz")) br = IOUtils.getTextGzipReader(inFile);
+//            else br = IOUtils.getTextReader(inFile);
             String temp ;
             bw = IOUtils.getTextWriter(outFile);
             int snp = 0, rmsnp = 0;
@@ -44,6 +45,12 @@ public class SegeregationTest {
                         System.out.println("Analyzing\t"+Integer.toString(snp)+"\t");
                     }
                     String[] te = temp.split("\t");
+//                    if(!maf(te)){
+//                        bw.write(temp);
+//                        bw.newLine();
+//                        bw.flush();
+//                        continue;
+//                    }
                     int s = te.length;
                     double[][] depth = new double[2][s-9];
                     for (int i = 0; i < te.length-9; i++){
@@ -88,5 +95,23 @@ public class SegeregationTest {
             ex.printStackTrace();
         }
         return num;
+    }
+    private boolean maf(String[] te){
+        boolean maf = false;
+        double m = 0;
+        int a0 = 0, a1 = 0, a2 = 0;
+        for (int i = 0; i<te.length-9;i++){
+            if(te[i+9].startsWith("0/0")){
+                a0++;
+            }else if(te[i+9].startsWith("0/1")){
+                a1++;
+            }else if(te[i+9].startsWith("1/1")){
+                a2++;
+            }
+        }
+        m = (double) (a1+2*a2)/(2*(a0+a1+a2));
+        if((1-m) < m) m = 1-m;
+        if(m > 0.05) maf = true;
+        return maf;
     }
 }

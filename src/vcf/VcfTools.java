@@ -71,6 +71,10 @@ public class VcfTools {
             this.getXPCLR(inFile);
         }else if(model.equals("dpfilter")){
             this.dpFilter(inFile, outFile,se);
+        }else if(model.equals("mac")){
+            this.macFilter(inFile, outFile);
+        }else if (model.equals("random")){
+            getRandom(inFile,outFile,se);
         }
         
         
@@ -442,7 +446,7 @@ public class VcfTools {
             String outFile;
             if(inFile.endsWith("gz")){
                 vcf = IOUtils.getTextGzipReader(inFile);
-                outFile = inFile.replace(".vcf.gz","mq");
+                outFile = inFile.replace(".vcf.gz",".mq");
             }
             else {
                 vcf = IOUtils.getTextReader(inFile);
@@ -942,83 +946,42 @@ public class VcfTools {
     private void getHet(String inFile,String outFile){
         try {
             System.out.println("Now analyzing the heterozyous....");
-            BufferedReader vcf;
-            if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
-            else  vcf = IOUtils.getTextReader(inFile);
-            String hetFile = inFile+".het";
-            if(!outFile.endsWith(".vcf")) outFile = outFile+".het.vcf";
+            TabixReader vcf = new TabixReader(inFile);
+//            if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
+//            else  vcf = IOUtils.getTextReader(inFile);
+//            String hetFile = inFile+".het";
+//            if(!outFile.endsWith(".vcf")) outFile = outFile+".het.vcf";
             BufferedWriter vcfhet = IOUtils.getTextWriter(outFile);
-            BufferedWriter het = IOUtils.getTextWriter(hetFile);
-            BufferedWriter het1 = IOUtils.getTextWriter(inFile+".perSNP.het");
+//            BufferedWriter het = IOUtils.getTextWriter(hetFile);
+//            BufferedWriter het1 = IOUtils.getTextWriter(inFile+".perSNP.het");
             String temp = null;
-            String tem[] = null;
-            int a0 = 0, a1 = 0, a2 = 0, an = 0;
-            int num = 0;
+            String te[] = null;
+           
             while ((temp=vcf.readLine())!=null){
-                if(temp.startsWith("#")){
-                    vcfhet.write(temp);
-                    vcfhet.newLine();
-                    vcfhet.flush();
-                }else{
+                int a0 = 0, a1 = 0, a2 = 0, an = 0;
+                int num = 0;
+                if(!temp.startsWith("#")){
+                    te = temp.split("\t");
                     double hetrate = 0;
-                    double hetNum = 0, TotalNum = 0;
-                    
-                    num++;
-                    tem = temp.split("\t");
-                    StringBuilder te = new StringBuilder();
-//                    te = null;
-                    te.append(tem[0]);
-                    
-                    for (int i = 1;i<9; i++){
-                        te.append("\t");
-                        te.append(tem[i]);
+                    double hetNum = 0;
+                    if(te[4].length() >1){
+                        continue;
                     }
-                    if(tem[4].length() >1) continue;
-                    for (int i = 9; i < tem.length;i++){
-                        if(tem[i].startsWith(".")){
-                            an++;
-                            tem[i] = "./.";
-                        }else if(tem[i].startsWith("0/0")){
-                            a0++;
-                            TotalNum++;
-                        }else if(tem[i].startsWith("1/1")){
-                            a2++;
-                            TotalNum++;
-                        }else if(tem[i].startsWith("1/0")|(tem[i].startsWith("0/1"))){
-                            a1++;
-                            hetNum++;
-                            TotalNum++;
-                            tem[i] = "./.";
-                        }else{
-//                            tem[i] = "./.";
-                            System.out.println(tem[i]);
-                            System.out.println(temp);
+                    for (int i = 9; i < te.length;i++){
+                        if(!te[i].startsWith(".")){
+                            num++;
+                            if(te[i].startsWith("0/1") || te[i].startsWith("1/0")) {
+                                hetNum++;
+                            }
                         }
-                        te.append("\t");
-                        te.append(tem[i]);
                     }
-                    hetrate = hetNum/TotalNum;
-                    het1.write(Double.toString(hetrate)+"\n");
-//                    vcfhet.write(te.toString());
-//                    vcfhet.newLine();
+                    hetrate = hetNum/num;
+                    vcfhet.write(hetrate+"\n");
                 }
             }
-            het1.flush();
-            het1.close();
+            
             vcfhet.flush();
             vcfhet.close();
-            het.write("Number of 00 is: "+ a0);
-            het.newLine();
-            het.write("Number of 10 is: "+ a1);
-            het.newLine();
-            het.write("Number of 11 is: "+ a2);
-            het.newLine();
-            het.write("Number of missing is: "+ an);
-            het.newLine();
-            het.write("Total SNPs is: " + num);
-            het.newLine();
-            het.flush();
-            het.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -1353,6 +1316,57 @@ public class VcfTools {
            ex.printStackTrace();
         }
     }
-    
+    public void macFilter(String inFile, String outFile){
+        try {
+            TabixReader br = new TabixReader(inFile);
+            String temp = "";
+            String[] te = null;
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            while((temp = br.readLine())!=null){
+                int hetNum = 0;
+                if(temp.startsWith("#")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    te = temp.split("\t");
+                    for (int i = 0; i<te.length-9;i++){
+                        if(te[i].startsWith("0/1")) hetNum++;
+                    }
+                    if(hetNum > 1){
+                        bw.write(temp);
+                        bw.newLine();
+                    }
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    public void getRandom(String inFile, String outFile, double rate){
+        try {
+            TabixReader br = new TabixReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = null;
+            while((temp = br.readLine())!=null){
+                if(temp.startsWith("#")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    if (Math.random()<rate){
+                        bw.write(temp);
+                        bw.newLine();
+                    };
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
     
 }
