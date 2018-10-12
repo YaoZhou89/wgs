@@ -30,8 +30,12 @@ public class test {
         if(type.equals("new")){
             this.getGenome(inFile);
         }
-        if(type.equals("")){
-            
+        if(type.equals("test")){
+            String S = "NNNATGCNNNCTANN";
+            String[] s = S.split("N");
+            for(int i = 0; i< s.length;i++){
+                System.out.println(s[i]+"\t"+s[i].length());
+            }
         }
         
     }

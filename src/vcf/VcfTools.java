@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import math.SegeregationTest;
 import htsjdk.tribble.readers.TabixReader;
 import htsjdk.variant.variantcontext.VariantContextUtils;
+import java.text.DecimalFormat;
 
 //import java.lang.Object;
 //import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
@@ -47,7 +48,7 @@ public class VcfTools {
     }
     public VcfTools(String inFile,String outFile,String model,double se){
         if(model.equals("depth")){
-            this.getDepthAll(inFile,outFile);
+//            
         }else
         if(model.equals("het")){
             this.getHet(inFile,outFile);
@@ -61,22 +62,160 @@ public class VcfTools {
         if(model.equals("GQ")){
             this.getGQ(inFile);
         }else
-        if(model.equals("eachDepth")){
-            this.getDepthAll(inFile,outFile);
+        if(model.equals("checkDepth")){
+            this.getDepthAll(inFile,outFile,se);
         }else
         if(model.equals("vcfToStructure")){
             this.getStructure(inFile);
         }else
         if(model.equals("vcfToXPCLR")){
-            this.getXPCLR(inFile);
+            this.getXPCLR(inFile,outFile);
         }else if(model.equals("dpfilter")){
             this.dpFilter(inFile, outFile,se);
         }else if(model.equals("mac")){
             this.macFilter(inFile, outFile);
         }else if (model.equals("random")){
             getRandom(inFile,outFile,se);
+        }else if (model.equals("phasing")){
+            phaseVCF(inFile,outFile);
+        }else if (model.equals("checkChr")){
+            checkChr(inFile);
+        }else if(model.equals("statGenotype")){
+            genotypeStat(inFile,outFile);
         }
         
+        
+    }
+    
+    public void genotypeStat(String inFile, String outFile){
+        try{
+            TabixReader br = new TabixReader(inFile);
+            String temp = "";
+            String[] te = null;
+            int[][] res = null;
+            String[] name = null;
+            while ((temp = br.readLine())!=null){
+                if(temp.startsWith("##")) continue;
+                if(temp.startsWith("#")){
+                    te = temp.split("\t");
+                    res = new int[te.length-9][4];
+                    name = new String[te.length-9];
+                    for (int i = 0; i < te.length-9;i++){
+                        name[i] = te[i+9];
+                        for (int j = 0; j< 4; j ++){
+                            res[i][j] = 0;
+                        }
+                    }
+                }else{
+                    te = temp.split("\t");
+                    for(int i = 0; i<te.length-9;i++){
+                        if(te[i+9].startsWith("0/0")){
+                            res[i][0]++;
+                        }else if(te[i+9].startsWith("1/1")){
+                            res[i][1]++;
+                        }else if(te[i+9].startsWith("0/1")){
+                            res[i][2]++;
+                        }else {
+                            res[i][3]++;
+                        }
+                    }
+                }
+            }
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            bw.write("Hom(REF)\tHom(ALT)\tHet\tMissing\n");
+            for (int i = 0;i<te.length-9;i++){
+                bw.write(name[i]+"\t"+res[i][0]+"\t"+res[i][1]+"\t"+res[i][2]+"\t"+res[i][3]+"\n");
+            }
+            bw.flush();
+            bw.close();
+        }
+        catch (Exception e){
+            
+        }
+    }
+    public void checkChr(String inFile){
+        try {
+            TabixReader br = new TabixReader(inFile);
+            Set chr = new HashSet();
+            String temp = "";
+            String[] te = null;
+            while ((temp = br.readLine())!=null){
+                if(!temp.startsWith("#")){
+                    te = temp.split("\t");
+                    if(chr.add(te[0])){
+                        System.out.println("Chomosome:\t"+te[0]);
+                    }
+                }  
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public static void generateNULL(String inFile, String outFile){
+        try {
+            TabixReader br = new TabixReader(inFile);
+            String temp = "";
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public static void merge(String inFile,String inFile2, String outFile){
+        try {
+            TabixReader ref = new TabixReader(inFile);
+            TabixReader alt = new TabixReader(inFile2);
+            String temp1 = "";
+            String temp2 = "";
+            String[] te1 = null;
+            String[] te2 = null;
+            Set pos = new HashSet();
+            StringBuilder head = new StringBuilder();
+            int snp = 0;
+            int read = 0;
+            while ((temp2 = alt.readLine())!=null){
+                if(temp2.startsWith("##")){
+                    head.append(temp2);
+                    head.append("\n");
+                }else{
+                    read ++;
+                    if (read % 100000 == 0){
+                        System.out.println("vcf file SNP readed:\t"+read/1000+"K...");
+                    }
+                    te2 = temp2.split("\t");
+                    pos.add(te2[1]);
+                }
+            }
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            BufferedWriter bw1 = IOUtils.getTextWriter(outFile+".log");
+            
+            System.out.println("VCF file "+ read +" SNPs readed! Now reading gvcf file...");
+            
+            read = 0;
+            while ((temp1 = ref.readLine())!=null){
+                if(temp1.startsWith("##")) continue;
+                if(temp1.startsWith("#")){
+                    head.append(temp1);
+                    bw.write(head.toString());
+                    bw.newLine();
+                    continue;
+                }
+                read ++;
+                if (read % 100000 == 0){
+                    System.out.println("gvcf file SNP readed:\t"+read/1000+"K...");
+                }
+                te1 = temp1.split("\t");
+                if(pos.add(te1[1])) continue;
+                snp++;
+                bw.write(temp1);
+                bw.newLine();
+            }
+            bw1.write("Total SNP is:\t"+snp);
+            bw1.flush();
+            bw1.close();
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
         
     }
     public VcfTools(String inFile,String outFile,Integer windowSize){
@@ -132,7 +271,50 @@ public class VcfTools {
     public VcfTools(String inFile,String outFile,String MQ,String FS,String MQRankSum,String ReadPosRankSum,String BSQRankSum,String SOR){
         this.getFilterd(inFile,outFile,MQ,FS,MQRankSum, ReadPosRankSum,BSQRankSum,SOR);
     }
-    
+    private void phaseVCF(String inFile,String outFile){
+        try {
+            TabixReader in = new TabixReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = "";
+            String[] te = null;
+            while((temp = in.readLine())!=null){
+                if(temp.startsWith("#")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    te = temp.split("\t");
+                    for (int i = 0; i < 9 ; i++){
+                        bw.write(te[i]+"\t");
+                    }
+                    for(int i = 0;i < te.length-10;i++){
+                        if(te[i+9].startsWith("0/0")){
+                            bw.write("0|0\t");
+                        }else if (te[i+9].startsWith("1/1")){
+                            bw.write("1|1\t");
+                        }else if(te[i+9].startsWith("0/1")){
+                            bw.write("0|1\t");
+                        }else{
+                            bw.write("?|?\t");
+                        }
+                    }
+                    if(te[te.length-1].startsWith("0/0")){
+                        bw.write("0|0\t");
+                    }else if (te[te.length-1].startsWith("1/1")){
+                        bw.write("1|1\t");
+                    }else if(te[te.length-1].startsWith("0/1")){
+                        bw.write("0|1\t");
+                    }else{
+                        bw.write("?|?\t");
+                    }
+                    bw.newLine();
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 //    public VcfTools(String inFile,String outFile,String model,int size,int SNPnum,int header){
 //        this.getSub(inFile,outFile,size,SNPnum);
 //    }
@@ -378,18 +560,52 @@ public class VcfTools {
         }
     }
     
-    private void getXPCLR(String inFile){
+    private void getXPCLR(String inFile,String outFiles){
         try {
-            BufferedReader br = IOUtils.getTextReader(inFile);
-            String outFile = inFile.replace(".vcf", ".geno");
-            String map = inFile.replace(".vcf", ".snp");
+            TabixReader br = new TabixReader(inFile);
+            String outFile = outFiles + ".geno";
+            String map = outFiles + ".snp";
             BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            BufferedWriter bsnp = IOUtils.getTextWriter(map);
             String temp = null;
+            int snp = 0;
             while((temp = br.readLine())!=null){
                 if(!temp.startsWith("#")){
+                    snp++;
+                    if(snp%1000000==0){
+                        System.out.println("SNPs\t"+snp/1000+"K...");
+                    }
                     String[] tmp = temp.split("\t");
+                    bsnp.write(" rs"+tmp[0]+"_"+tmp[1]+"\t"+tmp[0]+"\t"+Double.valueOf(Integer.parseInt(tmp[1]))/100000000+"\t"+tmp[1]+"\t"+tmp[3]+"\t"+tmp[4]+"\n");
+                    
+                    for (int i = 0; i<tmp.length-10;i++){
+                        if(tmp[i+9].startsWith("0/0")){
+                            bw.write("0 0 ");
+                        }else if (tmp[i+9].startsWith("1/1")){
+                            bw.write("0 1 ");
+                        }else if (tmp[i+9].startsWith("0/1")){
+                            bw.write("1 1 ");
+                        }else{
+                            bw.write("9 9 ");
+                        }
+                    }
+                    if(tmp[tmp.length-1].startsWith("0/0")){
+                        bw.write("0 0\n");
+                    }else if (tmp[tmp.length-1].startsWith("1/1")){
+                        bw.write("0 1\n");
+                    }else if (tmp[tmp.length-1].startsWith("0/1")|tmp[tmp.length-1].startsWith("0/2")){
+                        bw.write("1 1\n");
+                    }else if(tmp[tmp.length-1].startsWith("2/2")){
+                        bw.write("1 1\n");
+                    }else {
+                        bw.write("9 9\n");
+                    }
                 }
             }
+            bw.flush();
+            bw.close();
+            bsnp.flush();
+            bsnp.close();
         } catch (IOException ex) {
            ex.printStackTrace();
         }
@@ -1261,48 +1477,44 @@ public class VcfTools {
     * Methods: sample from each group, and then calculate the sd without missing
     *
     */
-    private void getDepthAll(String inFile,String outFile){
+    private void getDepthAll(String inFile,String outFile,double r){
         try {
             System.out.println("Now Testing SNP depth...");
-            BufferedReader vcf;
-            BufferedWriter VcfDepth;
-            BufferedWriter rsdFile;
-            if(inFile.endsWith("gz"))  vcf = IOUtils.getTextGzipReader(inFile);
-            else  vcf = IOUtils.getTextReader(inFile);
-            VcfDepth = IOUtils.getTextWriter(outFile+".eachLocus");
-            String temp = null;
+            TabixReader vcf = new TabixReader(inFile);
+            BufferedWriter VcfDepth = IOUtils.getTextWriter(outFile);
+            
+            String temp = "";
             String[] tem = null;
 //            Set depth = new HashSet(); // store the depth catalog
-            Integer d = 0;
             int snp = 0;
             int sampleNum = 0;
+//            VcfDepth.write("chr\tposition\tdepth\tsd");
             while ((temp = vcf.readLine())!=null){
                 if(!temp.startsWith("#")){
                     snp++;
-                    if(snp%10000 == 0) System.out.println("Anlyzing " + snp +"...");
+                    if(snp%100000 == 0) System.out.println("Anlyzing " + snp/1000 +"K...");
+                    if(Math.random()>r) continue;
                     tem = temp.split("\t");
                     sampleNum = tem.length - 9;
-                    int dp =0;
+                    double dp =0;
                     double rsd = 0;
                     StringBuilder depth = new StringBuilder();
                     String geno = null;
                     double[] deptheach = new double[sampleNum];
-//                    double[] depthmean0 = new double[sampleNum];
+                    int s = 0;
                     if(tem[4].length()==1){
 //                        depth.append(Integer.parseInt(tem[7].split("DP=")[1].split(";")[0]));
                         for (int ch = 0 ;ch < sampleNum; ch ++){
                             if(tem[ch+9].startsWith(".")) {
-                                geno = "NA";
                                 deptheach[ch] = Double.NaN;
                             }else{
                                 geno = tem[ch+9].split(":")[2];
                                 deptheach[ch] = Double.parseDouble(geno);
+                                dp += Double.parseDouble(geno);
+                                s++;
                             }
-                            depth.append(geno);
-                            depth.append("\t");
                         }
-                        depth.append(getSD(deptheach));
-                        VcfDepth.write(depth.toString());
+                        VcfDepth.write(tem[0]+"\t"+tem[1]+"\t"+dp+"\t"+s+"\t"+getSD(deptheach));
                         VcfDepth.newLine();
                     }
                 }

@@ -6,10 +6,12 @@
 package wheatwgs;
 
 import fasta.Genome;
+import fasta.contig;
 import gff.modifyGTF;
 import gff.splitByChr;
 import math.SegeregationTest;
 import script.GenerateScripts;
+import test.test;
 import text.Summary;
 import vcf.Check;
 import vcf.CompareVCF;
@@ -224,8 +226,16 @@ public class main {
             String[] temp = inFile.split("/");
             outFile = temp[temp.length -1].split("\\.")[0];
         }
+        if(model.equals("test")){
+            new test(inFile,model);
+        }
         if(model.equals("fasta")){
-            new Genome().readByChromosome(inFile,start,end);
+            if(type.equals("split")){
+                new Genome().readByChromosome(inFile,start,end);
+            }else if(type.equals("contig")){
+                contig.splitContig(inFile, outFile);
+            }
+            
         }
         if(model.equals("vcf")){
             // Segeragation test
@@ -238,7 +248,8 @@ public class main {
             }else if(type.equals("LDfilter")){
                 new VcfTools(inFile,outFile,windowSize,threshold);
             }else if(type.equals("merge")){
-                VcfTools.mergeVCF(inFile,outFile);
+//                VcfTools.mergeVCF(inFile,outFile);
+                VcfTools.merge(inFile,inFile2,outFile);
             }else if (type.equals("quality")){
                 new VcfTools(inFile,outFile,MQ,FS,MQRankSum, ReadPosRankSum,BSQRankSum,SOR);
             }else if(type.equals("compare")){

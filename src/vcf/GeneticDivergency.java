@@ -57,29 +57,25 @@ public class GeneticDivergency {
                                 if(!te[i+9].startsWith(".") && !te[j+9].startsWith(".")){
                                     a = te[i+9].split(":")[0];
                                     b = te[j+9].split(":")[0];
-                                    GD[i][j] +=2 ;
+                                    GD[i][j] += 1 ;
                                     if(a.equals("0/0")){
                                         if(b.equals("0/1")) {
-                                            GD[j][i]+=0.5; 
-                                        }else if(b.equals("1/1")){
-                                                GD[j][i]+=2; 
+                                            GD[j][i] += 0.5; 
+                                        }else if(b.equals("0/0")){
+                                            GD[j][i] += 1; 
                                         }else{
                                             
                                         }
-                                    }else if(a.equals("0/1")){
-                                        if(b.equals("0/1")) {
-                                            GD[j][i]+=0.5; 
-                                        }else {
-                                                GD[j][i]+=0.5; 
+                                    }else if(a.equals("1/1")){
+                                        if(b.equals("1/1")) {
+                                            GD[j][i]+= 1; 
+                                        }else if(b.equals("0/1")){
+                                            GD[j][i]+= 0.5; 
+                                        }else{
+                                            
                                         }
                                     }else{
-                                        if(b.equals("0/1")) {
-                                            GD[j][i]+=1.5; 
-                                        }else if(b.equals("0/0")){
-                                                GD[j][i]+=2; 
-                                        }else{
-                                            
-                                        }
+                                        GD[j][i]+=0.5;
                                     }
                                }
                            }
@@ -95,9 +91,9 @@ public class GeneticDivergency {
             }
             for(int i = 0; i< sampleNum;i++){
                 for(int j = 0; j< sampleNum-1;j++){
-                    bw.write(GD[i][j]+"\t");
+                    bw.write(1-GD[i][j]+"\t");
                 }
-                bw.write(GD[i][sampleNum-1]+"\n");
+                bw.write(1-GD[i][sampleNum-1]+"\n");
                 bw.flush();
             }
             bw.flush();
