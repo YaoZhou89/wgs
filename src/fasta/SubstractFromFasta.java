@@ -8,8 +8,12 @@ package fasta;
 import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -19,7 +23,41 @@ public class SubstractFromFasta {
     public SubstractFromFasta(String inFile,String names,String outFile){
         this.subNames(inFile, names,outFile);
     }
-
+    public SubstractFromFasta(String inFile,String outFile){
+        this.getSplited(inFile, outFile);
+    }
+    private void getSplited(String inFile,String outFile){
+        try {
+            File Genes = new File(outFile);
+            if(!Genes.isDirectory()){
+                Genes.mkdirs();
+            }
+            String temp = "";
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = null;
+            int i = 0;
+            boolean Write = false;
+            while ((temp = br.readLine())!=null){
+                if(temp.startsWith(">")){
+                    if(bw!=null){
+                        bw.flush();
+                        bw.close();
+                    }
+                    bw = IOUtils.getTextWriter(outFile+"/"+i+".fa");
+                    i++;
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    bw.write(temp);
+                    bw.newLine();
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(SubstractFromFasta.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     private void subNames(String inFile, String names,String outFile) {
         BufferedReader br,bn ;
         BufferedWriter bw,bw1;

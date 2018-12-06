@@ -7,17 +7,26 @@ package fasta;
 
 import io.IOUtils;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.lang.StringUtils;
 
 /**
  *
  * @author yaozhou
  */
 public class Genome {
+    int chrNum = 0;
+    Map chrInfo = new HashMap();
+    Map<String, String> seq = new HashMap();
     public Genome(){
+        
     }
+    
     public void readByChromosome(String inFile,int a, int b){
         try {
             BufferedReader br = IOUtils.getTextReader(inFile);
@@ -40,5 +49,139 @@ public class Genome {
         } catch (IOException ex) {
             Logger.getLogger(Genome.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+    public void getChrInfo(String inFile,String outFile){
+        BufferedReader br = IOUtils.getTextGzipReader(inFile);
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        String temp = "";
+        int chrLength = 0;
+        try {
+            while((temp = br.readLine())!=null){ 
+                if(temp.startsWith(">")){
+                    bw.write(temp + "\t");
+                    if(chrLength > 0){
+                        bw.write(chrLength);
+                        chrLength  = 0;
+                        bw.newLine();
+                    }
+                }else{
+                    chrLength += temp.length();
+                }
+            }
+            bw.write(chrLength);
+            bw.newLine();
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Genome.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void getBWAformat(String inFile, String outFile,double pattern){
+        BufferedReader br = IOUtils.getTextGzipReader(inFile);
+        BufferedWriter bw = IOUtils.getTextGzipWriter(outFile);
+//        String[] p = inFile.split("/");
+//        String path = inFile.split(p[p.length-1])[0];
+//        BufferedWriter binof = IOUtils.getTextWriter(path+"/Readme.txt");
+        String temp = "";
+        String[] te = null;
+        StringBuilder chr = null;
+        boolean write = false;
+        int chrNum = 0;
+        boolean unStart = false;
+        StringBuilder interval = null;
+        Integer length = 0;
+        int lineLength = 0;
+        boolean first= true;
+        try {
+            while((temp = br.readLine())!=null){
+                if(temp.startsWith(">")){
+                    if(chrNum < pattern || !unStart){
+                        chrNum++;
+                        bw.write(">" + chrNum);
+                        System.out.println(">" + chrNum);
+                        bw.newLine();
+//                        chr = new StringBuilder();
+//                        interval = new StringBuilder();
+                        length = 0;
+                        unStart = true;
+                    }else{
+                        continue;
+                    }
+                    
+//                        first = true;
+                }else{
+                    if(first) {
+                        lineLength = temp.length();
+                        first = false;
+                    }
+                    if(length < 400000001 ){
+                        length += lineLength;
+                        bw.write(temp);
+                        if(temp.length()!=lineLength){
+                            String Ns = StringUtils.repeat("N", lineLength-temp.length());
+                            bw.write(Ns);
+                        }
+                        bw.newLine();
+                    }else{
+                        unStart = false;
+                        if(temp.endsWith("N")||length > 500000000){
+                            bw.write(temp);
+                            bw.newLine();
+                            chrNum++;
+                            bw.write(">"+chrNum);
+                            bw.newLine();
+                            System.out.println(">" + chrNum);
+                            length = 0;
+                        }else{
+                            length += lineLength;
+                            bw.write(temp);
+                            bw.newLine();
+                        }
+                    }
+                    
+                    
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Genome.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void initialGenome(String inFile){
+        try {
+            BufferedReader br = IOUtils.getTextGzipReader(inFile);
+            String temp = "";
+            int chrSize = 0;
+            String chrName = "";
+            StringBuilder fasta  = null;
+            while ((temp = br.readLine())!=null){
+                if(temp.startsWith(">")){
+                    chrName = temp.split(">")[1];
+                    if(chrSize > 0){
+                        int s = 0;
+                        s = chrSize;
+                        chrInfo.put(chrName, s);
+                        chrSize = 0;
+                        seq.put(chrName,fasta.toString());
+                    }
+                    fasta = new StringBuilder();
+                }else{
+                    fasta.append(temp);
+                }
+                
+            }
+            int s = 0;
+            s = chrSize;
+            chrInfo.put(chrName, s);
+            chrSize = 0;
+            seq.put(chrName,fasta.toString());
+        } catch (IOException ex) {
+            Logger.getLogger(Genome.class.getName()).log(Level.SEVERE, null, ex);
+        }
+       
+    }
+    public String getSeq(String chr){
+        return seq.get(chr);
     }
 }

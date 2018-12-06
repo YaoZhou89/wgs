@@ -35,11 +35,12 @@ public class CompareVCF {
         String temp = "",chr="";
         BufferedReader bref = IOUtils.getTextReader(in2);
         String outFile = in1+"/CScount"+suffix+".txt";
-        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+       
         String[] te = null;
         int count = 0;
         int refc =0;
         try{
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
             while((temp = bref.readLine())!=null){
                 if(!temp.startsWith("#")){
                     te = temp.split("\t");
@@ -53,7 +54,7 @@ public class CompareVCF {
             for (File f : subFile){
                 int c = 0;
                 System.out.println("now processing\t"+f.toString());
-                BufferedReader br = IOUtils.getTextReader(f.toString());
+                TabixReader br = new TabixReader(f.toString());
                 while((temp = br.readLine())!=null){
                     if(!temp.startsWith("#")){
                         te = temp.split("\t");
@@ -90,23 +91,32 @@ public class CompareVCF {
             while((temp = br1.readLine())!=null){
                 if(temp.startsWith("#")) continue;
                 te = temp.split("\t");
-                S1.add(te[1]);
+                S1.add(te[0]+"_"+te[1]+"_"+te[3]+"_"+te[4]);
             }
-            BufferedWriter bw = IOUtils.getTextWriter(in2.replace(".vcf.gz", ".unique.vcf"));
+            System.out.println(in1 +"\treaded!");
+            BufferedWriter bwd = IOUtils.getTextWriter(in2.replace(".vcf.gz", ".unique.vcf"));
+            BufferedWriter bws = IOUtils.getTextWriter(in2.replace(".vcf.gz", ".intersect.vcf"));
             while((temp = br2.readLine())!=null){
                 if(temp.startsWith("#")){
-                    bw.write(temp);
-                    bw.newLine();
+                    bwd.write(temp);
+                    bwd.newLine();
+                    bws.write(temp);
+                    bws.newLine();
                 }else{
                     te = temp.split("\t");
-                    if(S1.add(te[1])){
-                        bw.write(temp);
-                        bw.newLine();
+                    if(S1.add(te[0]+"_"+te[1]+"_"+te[3]+"_"+te[4])){
+                        bwd.write(temp);
+                        bwd.newLine();
+                    }else{
+                        bws.write(temp);
+                        bws.newLine();
                     }
                 }
             }
-            bw.flush();
-            bw.close();
+            bwd.flush();
+            bwd.close();
+            bws.flush();
+            bws.close();
         } catch (IOException ex) {
             Logger.getLogger(CompareVCF.class.getName()).log(Level.SEVERE, null, ex);
         }

@@ -5,6 +5,7 @@
  */
 package vcf;
 
+import htsjdk.tribble.readers.TabixReader;
 import io.IOUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -52,6 +53,7 @@ public class Check {
                 }
                 br.close();
             }
+            
             bw.flush();
             bw.close();
         }catch (Exception e){
@@ -147,5 +149,96 @@ public class Check {
             Logger.getLogger(Check.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+    public void checkAll(String inFile,String outFile){
+        try {
+            TabixReader br = new TabixReader(inFile);
+            String temp = "";
+            String[] te = null;
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            int a = 0, b = 0, outlier = 0;
+            while((temp = br.readLine()) != null){
+                if(temp.startsWith("#")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    te = temp.split("\t");
+                    bw.write(te[0]);
+                    for(int i = 1, len = te.length; i < len; i++ ){
+                        if(te[i].startsWith("0/0")){
+                            String[] t = te[i].split(":");
+                            String[] tt = t[1].split(",");
+                            a = Integer.parseInt(tt[0]);
+                            b = Integer.parseInt(tt[1]);
+                            if( a < b){
+                                outlier++;
+                                if(a > 0){
+                                    String ttt = te[i].replace("0/0", "0/1");
+                                    bw.write("\t"+ttt);
+                                }else{
+                                    String ttt = te[i].replace("0/0", "1/1");
+                                    bw.write("\t"+ttt);
+                                }
+                            }else{
+                                bw.write("\t" + te[i]);
+                            }
+                        }else if(te[i].startsWith("0/1")){
+                            bw.write("\t" + te[i]);
+                        }else if(te[i].startsWith("1/1")){
+                            String[] t = te[i].split(":");
+                            String[] tt = t[1].split(",");
+                            a = Integer.parseInt(tt[0]);
+                            b = Integer.parseInt(tt[1]);
+                            if( b < a){
+                                outlier++;
+                                if(b > 0){
+                                    String ttt = te[i].replace("1/1", "0/1");
+                                    bw.write("\t"+ttt);
+                                }else {
+                                    String ttt = te[i].replace("1/1", "0/0");
+                                    bw.write("\t"+ttt);
+                                }
+                            }else{
+                                bw.write("\t" + te[i]);
+                            }
+                        }else if(te[i].startsWith("./.")){
+                            String[] t = te[i].split(":");
+                            if(t.length > 2){
+                                String[] tt = t[1].split(",");
+                                a = Integer.parseInt(tt[0]);
+                                b = Integer.parseInt(tt[1]);
+                                if(a == 0){
+                                    if( b == 0 ){
+                                        bw.write("\t" + te[i]);
+                                    }else{
+                                        bw.write("\t" + "1/1" + ":" + a + "," + b);
+                                        outlier++;
+                                    }
+                                }else{
+                                    if(b > 0){
+                                        bw.write("\t" + "0/1" + ":" + a + "," + b);
+                                        outlier++;
+                                    }else{
+                                        bw.write("\t" + "0/0" + ":" + a + "," + b);
+                                        outlier++;
+                                    }
+                                }
+                            }else{
+                                bw.write("\t" + te[i]);
+                            }
+                            
+                        }else{
+                            bw.write("\t" + te[i]);
+                            
+                        }
+                    }
+                    bw.newLine();
+                }
+            }
+            bw.flush();
+            bw.close();
+            System.out.println("Outiler numer is: "+outlier);
+        } catch (IOException ex) {
+            Logger.getLogger(Check.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }

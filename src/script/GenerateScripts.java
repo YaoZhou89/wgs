@@ -23,7 +23,10 @@ import java.util.logging.Logger;
  * @author yaozhou
  */
 public class GenerateScripts {
-    public GenerateScripts(String inFile,String outFile,String model){
+    public GenerateScripts(){
+        
+    }
+    public GenerateScripts(String inFile,String outFile,String model,String suffix){
         if(model.equals("model1")){
             this.getRScripts();
         }
@@ -34,13 +37,14 @@ public class GenerateScripts {
             this.getMacscript();
         }
         if(model.equals("model4")){
-            this.getMapping(inFile,outFile);
+            this.getMapping(inFile,outFile,suffix);
         }
         if(model.equals("model5")){
             this.getSh(inFile);
         }
         if(model.equals("model6")){
-            this.getVar(inFile,outFile);
+            System.out.println("modle6");
+            this.getVar(inFile,outFile,suffix);
         }
         if(model.equals("model7")){
             this.getBamHeader(inFile, outFile);
@@ -51,6 +55,9 @@ public class GenerateScripts {
         if(model.equals("model9")){
             this.getBamIndex(inFile, outFile);
         }
+        if(model.equals("model9s")){
+            this.getBamIndexSmall(inFile, outFile);
+        }
         if(model.equals("model10")){
             this.getS();
         }
@@ -60,6 +67,13 @@ public class GenerateScripts {
         if(model.equals("model12")){
             this.getConf(inFile,outFile);
         }
+        if(model.equals("model13")){
+            this.check(inFile);
+        }
+    }
+    
+    public GenerateScripts(String inFile, String outFile, String chrs){
+        getByChr(inFile,outFile,chrs);
     }
     public void getRScripts(){
          BufferedWriter bw = IOUtils.getTextWriter("scripts.sh");
@@ -74,17 +88,43 @@ public class GenerateScripts {
                 ex.printStackTrace();
             };
     }
-   
-    public void getMapping(String inFile,String outFile){
+    public void check(String inFile){
+        File test = new File(inFile);
+        File[] t = IOUtils.listRecursiveFiles(test);
+        File[] baiFile = IOUtils.listFilesEndsWith(t, ".bai");
+        File[] bamFile = IOUtils.listFilesEndsWith(t, ".bam");
+        Set bai = new HashSet();
+        int i = 0;
+        for(File f : baiFile){
+            String a = f.toString();
+            String b = a.replace(".bai","");
+            bai.add(b);
+//            if(i == 0){
+//                System.out.println(b);
+//                i++;
+//            }
+        }
+        for(File f : bamFile){
+//            if(i==1){
+//                System.out.println(f.toString());
+//                i++;
+//            }
+            if(bai.add(f.toString())){
+                System.out.println(f.toString());
+            }
+        }
+    }
+    public void getMapping(String inFile,String outFile,String ref){
         StringBuilder header = new StringBuilder();
         header.append("#!/bin/bash\n");
+        header.append("module load bwa\n");
         File dir = new File(outFile+"/Scripts_ref");
         if(!dir.exists()) dir.mkdir();
         File Bamdir = new File(outFile+"/ref_bam");
         if(!Bamdir.exists()) Bamdir.mkdir();
         File test = new File (inFile);
         File[] fs = IOUtils.listRecursiveFiles(test);
-        File[] subFs = IOUtils.listFilesEndsWith(fs, "q.gz");
+        File[] subFs = IOUtils.listFilesEndsWith(fs, ".fq.gz");
         File[] reFs = getPath(subFs);   
         try {
             for(File entry : reFs){
@@ -96,8 +136,8 @@ public class GenerateScripts {
                 String name = pa[pa.length-1];
                 BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+name+".sh");
                 bws.write(header.toString());
-                bws.write("yhrun -n 1 -c 24 speedseq align -R\t"+"\"@RG\\tID:"+name+"\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330\""+
-                        "\t-o\t"+ Bamdir.toString()+"/"+name  +"\t-t 24 /BIGDATA/pp811/data/tomato/ref/S_lycopersicum_chromosomes.3.00.fa\t"
+                bws.write("yhrun -n 1 -c 24 speedseq align -R\t"+"\"@RG\\tID:"+name+"\\tSM:"+name+"\\tPL:ILLUMINA\\tPI:330\""+
+                        "\t-o\t"+ Bamdir.toString()+"/"+name  +"\t-t 24 "+ ref +"\t"
                         +fq[0].getAbsolutePath()+"\t"+fq[1].getAbsolutePath());
                 bws.flush();
                 bws.close();
@@ -107,7 +147,7 @@ public class GenerateScripts {
                 ex.printStackTrace();
         }
     }
-    public void getVar(String inFile,String outFile){
+    public void getVar(String inFile,String outFile,String suffix){
         StringBuilder header = new StringBuilder();
         header.append("#!/bin/bash\n");
         File dir = new File(outFile+"/Scripts_ref");
@@ -119,6 +159,13 @@ public class GenerateScripts {
         File[] subFs = IOUtils.listFilesEndsWith(fs, ".bam");
 //        File[] reFs = getPath(subFs);   
         StringBuilder command =new StringBuilder("yhrun -n 1 -c 24 speedseq var ");
+        command.append("-o ");
+        command.append(outFile+ " ");
+        command.append("-t 24 ");
+        command.append(suffix);
+        command.append(" ");
+        
+        System.out.println(command.toString());
         try {
             for(File entry : subFs){
                 if(entry.length()/1024/1024 < 100) continue;
@@ -192,7 +239,8 @@ public class GenerateScripts {
     public void getBamIndex(String inFile, String outFile){
         StringBuilder header = new StringBuilder();
         header.append("#!/bin/bash\n");
-        File dir = new File(outFile+"/Scripts_lyc");
+        header.append("module load samtools\n");
+        File dir = new File(outFile+"/bam_index_sh");
         if(!dir.exists()) dir.mkdir();
 //        File Bamdir = new File(outFile+"/ref_bam");
 //        if(!Bamdir.exists()) Bamdir.mkdir();
@@ -206,7 +254,60 @@ public class GenerateScripts {
         BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+"index"+f+".sh");
         try {
             for(File entry : subFs){
-                if(entry.length()/1024/1024 < 100) continue;
+                if(entry.length()/1024 < 100) continue;
+//                String[] pa = entry.toString().split("/");
+//                String name = pa[pa.length-1];
+                num++;
+                
+                if(num % 24 == 0){
+                    f++;
+                    bws.write(header.toString());
+                    bws.write(command.toString());
+                    bws.write("wait");
+                    bws.newLine();
+                    bws.flush();
+                    bws.close();
+                    bws = IOUtils.getTextWriter(dir.toString()+"/"+"index"+f+".sh");
+                    command =new StringBuilder();
+                }
+                command.append("yhrun -n 1 -c 1 samtools index \t");
+                outbam = entry.toString().replace(".bam", ".bam.bai");
+                command.append(entry.toString());
+                command.append("\t");
+                command.append(outbam);
+                command.append("\t&\n");
+                
+            }
+            bws.write(header.toString());
+            bws.write(command.toString());
+            bws.write("wait");
+            bws.newLine();
+            bws.flush();
+            bws.close();
+            
+        } catch (IOException ex) {
+                ex.printStackTrace();
+        }
+    }
+    public void getBamIndexSmall(String inFile, String outFile){
+        StringBuilder header = new StringBuilder();
+        header.append("#!/bin/bash\n");
+        header.append("module load samtools\n");
+        File dir = new File(outFile+"/bam_index_small_sh");
+        if(!dir.exists()) dir.mkdir();
+//        File Bamdir = new File(outFile+"/ref_bam");
+//        if(!Bamdir.exists()) Bamdir.mkdir();
+        File test = new File (inFile);
+        File[] fs = IOUtils.listRecursiveFiles(test);
+        File[] subFs = IOUtils.listFilesEndsWith(fs, ".bam");
+//        File[] reFs = getPath(subFs);  
+        String outbam ="";
+        StringBuilder command =new StringBuilder();
+        int num = 0,f=0;
+        BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+"index"+f+".sh");
+        try {
+            for(File entry : subFs){
+                if(entry.length()/1024/1024 >= 100) continue;
 //                String[] pa = entry.toString().split("/");
 //                String name = pa[pa.length-1];
                 num++;
@@ -452,7 +553,7 @@ public class GenerateScripts {
         int i = 1;
         int j =0;
         String name ="s1";
-        BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+name+".sh");
+        BufferedWriter bws = IOUtils.getTextWriter(dir.toString()+"/"+name+".script");
         try {
             bws.write(header.toString());
             for(File entry : subFs){
@@ -465,9 +566,9 @@ public class GenerateScripts {
                     bws = IOUtils.getTextWriter(dir.toString()+"/"+name+".script");
                     bws.write(header.toString());
                 }
-                bws.write("sh\t"+entry);
+                bws.write("yhbatch -N 1 -p paratera \t"+entry);
                 bws.newLine();
-                
+                bws.write("sleep 2s\n");
             }
             bws.flush();
             bws.close();
@@ -543,5 +644,79 @@ public class GenerateScripts {
             }
             
         }
+    }
+    public void getByChr(String inFile, String outFile,String chrs){
+        File test = new File(inFile);
+        File dir1 = new File(outFile+"/splitSh");
+        if(!dir1.exists()) dir1.mkdir();
+        File dir2 = new File(outFile+"/splitBam");
+        if(!dir2.exists()) dir2.mkdir();
+       
+        File[] fs = IOUtils.listRecursiveFiles(test);
+        File[] subFs = IOUtils.listFilesEndsWith(fs, ".bam");
+        for (File f : subFs){
+            if(f.length()/1024/1024 < 100) continue;
+            String[] pa = f.getAbsolutePath().split("/");
+            String name = pa[pa.length -1].replace(".bam", "");
+//            System.out.println(name);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile+"/splitSh/" + name + ".bamSplitChr.sh");
+            getBody(bw,chrs,f.getAbsolutePath(),outFile);
+        }
+    }
+    private void getBody(BufferedWriter bw,String chrs,String name,String outFile){
+        try {
+            bw.write("#!/bin/bash\n");
+            bw.write("module load samtools\n");
+            String[] chr = chrs.split(" ");
+            String[] pa = name.split("/");
+            String names = pa[pa.length -1].replace(".bam", "");            
+            for (int i = 0; i < chr.length; i++){
+                bw.write("yhrun -n 1 -c 1 samtools view -b " + name +" "+ chr[i] + " > " + outFile +"/splitBam/"+ names + "." + chr[i] +".bam &\n");
+            }
+            bw.write("wait\n");
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void getSamtoolsCalling(String inFile,String outFile, String suffix,String chrs){
+        try {
+            StringBuilder header = new StringBuilder();
+            header.append("#!/bin/bash\n");
+            header.append("module load samtools\n");
+            header.append("module load bcftools\n");
+           
+           
+            String[] chr = chrs.split(" ");
+            BufferedWriter bw = IOUtils.getTextWriter(outFile+"/vcf.sh");
+            bw.write(header.toString());
+            bw.newLine();
+            for (int i = 0; i < chr.length; i++){
+                File test = new File(inFile);
+                File[] t = IOUtils.listRecursiveFiles(test);
+                File[] tt = IOUtils.listFilesEndsWith(t, ".bam");
+                File[] subF = IOUtils.listFilesContains(tt, chr[i]);
+                StringBuilder command = new StringBuilder();
+                command.append("yhrun -n 1 -c 1 samtools mpileup -uf ");
+                command.append(suffix + " ");
+                for (File f:subF){
+                    command.append(" ");
+                    command.append(f.getAbsoluteFile());
+                }
+                command.append(" | bcftools call -mv -Oz -o ");
+                command.append(outFile);
+                command.append("/");
+                command.append(chr[i]+".vcf.gz &\n");
+                bw.write(command.toString());
+                
+            }
+            bw.write("wait\n");
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
     }
 }

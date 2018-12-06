@@ -20,7 +20,9 @@ public class contig {
     public contig(){
         
     }
-    
+    public static void getContig(String inFile,String outFile){
+        
+    }
     public static void splitContig(String inFile, String outFile){
         try {
             BufferedReader br = IOUtils.getTextReader(inFile);

@@ -5,11 +5,20 @@
  */
 package wheatwgs;
 
+import GO.GO;
+import bed.bed;
 import fasta.Genome;
+import fasta.SubstractFromFasta;
+import fasta.Transform;
 import fasta.contig;
+import fastq.Fastq;
+import gff.gff3;
 import gff.modifyGTF;
 import gff.splitByChr;
+import math.Pi;
 import math.SegeregationTest;
+import math.gwasResult;
+import math.singleRegion;
 import script.GenerateScripts;
 import test.test;
 import text.Summary;
@@ -55,6 +64,7 @@ public class main {
         double maxIBDDist = 0.02, threshold = 0.1;
         int start = 0, end =1;
         String MQ = "40", FS= "60", MQRankSum = "-12.5", ReadPosRankSum ="-8",BSQRankSum="0",SOR="3";
+       
         for (int i = 0; i < len; i++){
             if (null != args[i])switch (args[i]) {
                 case "--model":
@@ -89,6 +99,10 @@ public class main {
                     inFile2 = args[i+1];
                     i++;
                     break;
+                case "--list":
+                    inFile2 = args[i+1];
+                    i++;
+                    break;
                 case "--gzip":
                     gzip = true;
                     break;
@@ -101,6 +115,10 @@ public class main {
                     byChr = true;
                     break;
                 case "--subname":
+                    //for model is GH
+                    names = args[i+1];
+                    break;
+                case "--pattern":
                     //for model is GH
                     names = args[i+1];
                     break;
@@ -218,6 +236,15 @@ public class main {
                     end =Integer.parseInt(args[i+1]);
                     i++;
                     break;
+                case "--TotalDepth":
+                    maxSD = Double.parseDouble(args[i+1]);
+                    i++;
+                    break;
+                case "--rate":
+                    a = Double.parseDouble(args[i+1]);
+                    i++;
+                    break;
+                
                 default:
                     break;
             }
@@ -234,6 +261,54 @@ public class main {
                 new Genome().readByChromosome(inFile,start,end);
             }else if(type.equals("contig")){
                 contig.splitContig(inFile, outFile);
+            }else if(type.equals("getGene")){
+                new SubstractFromFasta(inFile, outFile);
+            }else if (type.equals("toFastq")){
+                new Transform(inFile,outFile);
+            }else if (type.equals("getChr")){
+                new Genome().getChrInfo(inFile, outFile);
+            }else if (type.equals("bwa")){
+                new Genome().getBWAformat(inFile,outFile,a);
+            }
+        }else if (model.equals("fastq")){
+            new Fastq().changeName(inFile, outFile);
+        }
+        if(model.equals("conserved")){
+            if(type.equals("region")){
+                new singleRegion().getSR(inFile, outFile, maxSD, a);
+            }else if (type.equals("site")){
+                new singleRegion().getSS(inFile, outFile, a, b);
+            }else if (type.equals("getBed")){
+                new singleRegion().getBed(inFile, outFile);
+            }else if (type.equals("getBedPi")){
+                new Pi().getBedPi(inFile, bed, outFile);
+            }else if (type.equals("toChr")){
+                new singleRegion().toChr(inFile, outFile);
+            }else if(type.equals("getModified")){
+                new singleRegion().getLen(inFile, outFile);
+            }else if (type.equals("getRegionSum")){
+                new singleRegion().getBedTotal(inFile, outFile,names);
+            }
+            
+        }
+        if(model.equals("bed")){
+            if(type.equals("sortBed")){
+                new bed().sort(inFile,outFile);
+            }else if(type.equals("getRegion")){
+                new bed().getRegion(inFile, outFile);
+            }else if (type.equals("splitBychr")){
+                new bed().splitByChr(inFile, outFile);
+            }
+           
+        }
+        if(model.equals("GO")){
+            new GO().toGO(inFile, keyFileName, outFile);
+        }
+        if(model.equals("GWAS")){
+            if(type.equals("plink")){
+                new gwasResult().thinResult(inFile, outFile, maxSD, threshold);
+            }else if (type.equals("emmax")){
+                new gwasResult().thinEMMAX(inFile, outFile, maxSD, threshold);
             }
             
         }
@@ -286,6 +361,15 @@ public class main {
                 new CompareVCF().compare(inFile, outFile);
             }else if (type.equals("twoStatic")){
                 new Check().getTwo(inFile);
+            }else if (type.equals("mergeVCF")){
+                VcfTools.mergeVCF(inFile,outFile);
+
+            }else if (type.equals("getDerivedSNP")){
+                new VcfTools().getDerivedSNP(inFile, inFile2, outFile);
+            }else if(type.equals("checkAll")){
+                new Check().checkAll(inFile, outFile);
+            }else if (type.equals("changeHeader")){
+                new VcfTools().changeHeader(inFile, outFile, suffix);
             }
             else{
                 new VcfTools(inFile,outFile,type,maxSD);
@@ -303,18 +387,30 @@ public class main {
                 new modifyGTF(inFile,outFile,inFile2);
             }else if(type.equals("splitByChr")){
                 new splitByChr(inFile);
+            }else if (type.equals("toBed")){
+                new gff3().toBed(inFile, inFile2, outFile, names);
             }
         }
         if(model.equals("frequence")){
             Frequence.sumFre(inFile, suffix, outFile);
         }
         if(model.equals("GenerateScripts")){
-            if(!chr.equals("")){
+            if(type.equals("mergeLineage")){
                 GenerateScripts.mergeLineage(inFile, outFile, chr);
-            }else{
-                new GenerateScripts(inFile,outFile,type);
+            }else if(type.equals("splitBamByChr")){
+                new GenerateScripts(inFile,outFile,chr);
+            }else if (type.equals("samtoolsCalling")){
+                new GenerateScripts().getSamtoolsCalling(inFile, outFile,suffix,chr);
+            }
+            else {
+                new GenerateScripts(inFile,outFile,type,suffix);
             }
             
+        }
+        if(model.equals("PI")){
+            if(type.equals("sitePi")){
+                new Pi().getSitePi(inFile, inFile2, outFile);
+            }
         }
         long endTime = System.currentTimeMillis();
         int timeLast = (int) ((endTime-startTime)/1000);
