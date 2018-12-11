@@ -15,6 +15,7 @@ import fastq.Fastq;
 import gff.gff3;
 import gff.modifyGTF;
 import gff.splitByChr;
+import math.Correlation;
 import math.Pi;
 import math.SegeregationTest;
 import math.gwasResult;
@@ -410,6 +411,13 @@ public class main {
         if(model.equals("PI")){
             if(type.equals("sitePi")){
                 new Pi().getSitePi(inFile, inFile2, outFile);
+            }else if (type.equals("getBed")){
+                new Pi().forPlot(inFile, outFile);
+            }
+        }
+        if(model.equals("correlation")){
+            if (type.equals("siteCor")){
+                new Correlation().siteCor(inFile, outFile, size);
             }
         }
         long endTime = System.currentTimeMillis();

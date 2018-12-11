@@ -272,5 +272,13 @@ public class vcf {
     public String getendPos(){
         return endPos;
     }
-    
+    public List<String[]> getGenotype(){
+        return genotype;
+    }
+    public Map<Integer,Integer> getMap(){
+        return posMap;
+    }
+    public List<String[]> getInfo(){
+        return info;
+    }
 }

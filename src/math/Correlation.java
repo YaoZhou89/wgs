@@ -5,7 +5,15 @@
  */
 package math;
 
+import io.IOUtils;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
+import vcf.vcf;
 
 /**
  *
@@ -16,6 +24,46 @@ public class Correlation {
     }
     public Correlation(double[] a, double[][] b){
         this.calCor(a,b);
+    }
+    public void siteCor(String inFile,String outFile,String site){
+        vcf genoe = new vcf();
+        genoe.initialVCFread(inFile);
+        genoe.readVCFByChr();
+        List<String[]> geno = genoe.getGenotype();
+        int a = geno.size();
+        int b = geno.get(1).length;
+        double[][] genotypeMatrix = new double[a][b];
+        for(int i = 0; i < a ; i++){
+            for (int j = 0; j < b; j++){
+                if(geno.get(i)[j].startsWith("0/0")){
+                    genotypeMatrix[i][j] = 0;
+                }else if(geno.get(i)[j].startsWith("1/1")){
+                    genotypeMatrix[i][j] = 2;
+                }else if(geno.get(i)[j].startsWith("0/1")){
+                    genotypeMatrix[i][j] = 1;
+                }else {
+                    genotypeMatrix[i][j] = Double.NaN;
+                }
+            }
+        }
+        double[] siteD = new double[b];
+        Map<Integer,Integer> pos = genoe.getMap();
+        int p = pos.get(Integer.parseInt(site));
+        siteD = genotypeMatrix[p];
+        double[] cor = calCor(siteD,genotypeMatrix);
+        List < String[] > info = genoe.getInfo();
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        try {
+            for (int i = 0,length = info.size(); i < length; i++ ){
+                bw.write(info.get(i)[0]+"\t"+info.get(i)[1]+"\t"+cor[i]);
+                bw.newLine();
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Correlation.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
     }
     public double[] calCor(double[] a,double[][] b){
         double cor[] =  new double[b.length];

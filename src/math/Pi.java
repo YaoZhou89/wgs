@@ -139,4 +139,68 @@ public class Pi {
             Logger.getLogger(Pi.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    public void forPlot(String inFile,String outFile){
+        try {
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            String temp = "";
+            String[] te = null;
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            int i = 0 ;
+            double sum = 0;
+            String chr = "";
+            int num = 1;
+            while ((temp =br.readLine())!=null){
+                te = temp.split("\t");
+                int pos = Integer.parseInt(te[1]);
+                if(te[0].equals(chr)){
+                    while(pos > (i+1)*1000000){
+                        if(num==0){
+                            bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ 0);
+                        }else{
+                            bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ sum/num);
+                        }
+                        
+                        bw.newLine();
+                        sum = 0;
+                        i++;
+                        num = 0;
+                    }
+                        sum += Double.parseDouble(te[3]);
+                        num++;
+                    
+                }else{
+                    chr = te[0];
+                    sum = 0;
+                    num = 0;
+                    i = 0;
+                    while(pos > (i+1)*1000000){
+                        if(num==0){
+                            bw.write(chr.toString() + "\t" + i*1000000 + "\t" + (i+1)*1000000 + "\t"+ 0);
+                        }else{
+                            bw.write(chr.toString() + "\t" + i*1000000 + "\t" + (i+1)*1000000 + "\t"+ sum/num);
+                        }                        
+                        bw.newLine();
+                        sum = 0;
+                        i++;
+                        num = 0;
+                    }
+                    
+                        sum += Double.parseDouble(te[3]);
+                        num++;
+                    
+                }
+                
+            }
+            if(num==0){
+                bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ 0);
+            }else{
+                bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ sum/num);
+            }
+            bw.newLine();
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Pi.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }
