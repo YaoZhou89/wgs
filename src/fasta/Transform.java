@@ -18,6 +18,9 @@ import org.apache.commons.lang.StringUtils;
  * @author yaozhou
  */
 public class Transform {
+    public Transform(){
+        
+    }
     public Transform( String inFile, String outFile){
         this.toFastq(inFile, outFile);
     }
@@ -118,4 +121,28 @@ public class Transform {
         }
         return out;
     }
+    public void changeName (String inFile,String outFile,String name){
+        try {
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = "";
+            String[] te = null;
+            while ((temp = br.readLine())!=null){
+               if(temp.startsWith(">")){
+                   String t = temp.replace(">", "");
+                   te = t.split(" ");
+                   bw.write(">" + name + "|" + te[0]);
+                   bw.newLine();
+               }else{
+                   bw.write(temp);
+                   bw.newLine();
+               }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Transform.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+ 
 }

@@ -99,13 +99,40 @@ public class VcfTools {
             diagSNP(inFile,outFile);
         }else if(model.equals("equalDepth")){
             equalDepth(inFile,outFile);
-        }else if (model.equals("diversity")){
-            getDiversity(inFile,outFile);
+        
         }else if (model.equals("fastDiversity")){
             getDiversityFast(inFile,outFile);
+        }else if (model.equals("getOneChr")){
+            getOneChr(inFile,outFile);
         }
         
     }
+    public void getOneChr(String inFile, String outFile){
+        try {
+            String temp = "";
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            while ((temp = br.readLine())!=null){
+                if(temp.startsWith("#")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else if(temp.startsWith("Chr1\t")){
+                    bw.write(temp);
+                    bw.newLine();
+                }else{
+                    break;
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public VcfTools(String inFile, String bedFile,String outFile,Integer windowSize){
+            getDiversity(inFile,bedFile,outFile,windowSize);
+    }
+    
     public void getDerivedSNP(String inFile,String inFile2, String outFile){
         try {
             TabixReader br1 = new TabixReader(inFile);
@@ -256,7 +283,7 @@ public class VcfTools {
 //            }
 //            pi = pij*2;
 //    }
-    public void getDiversity(String inFile,String outFile){
+    public void getDiversity(String inFile,String bedFile,String outFile,int windowSize){
         try {
             TabixReader br = new TabixReader(inFile);
             String temp = "";
@@ -317,7 +344,7 @@ public class VcfTools {
                     h.put(geno,t);
                 }
                 genotype.add(geno);
-                if(!end && (posEnd-posStart) > 5000){
+                if(!end && (posEnd-posStart) > windowSize){
                     double pi = estimatePi(posStart, posEnd, sampleSize, genotype,h);
                     bw.write(chr+"\t"+posStart+"\t"+posEnd+"\t"+pi+"\n");
                     h = new HashMap();
@@ -621,7 +648,8 @@ public class VcfTools {
     }
     public static void toFasta(String inFile, String outFile){
         try {
-            TabixReader br = new TabixReader(inFile);
+            BufferedReader br = IOUtils.getTextGzipReader(inFile);
+            if(!inFile.endsWith(".gz")) br = IOUtils.getTextReader(inFile);
             StringBuilder[] fa = null;
             String[] sample = null;
             String temp = "";
@@ -845,6 +873,80 @@ public class VcfTools {
             Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    public void mergeAll(String inFile,String outFile,String suffix){
+        File inF = new File(inFile);
+        File[] ins = IOUtils.listRecursiveFiles(inF);
+        File[] subin = IOUtils.listFilesEndsWith(ins, suffix);
+        boolean start = true;
+        BufferedReader br = null;
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        try {
+            for (File ff : subin){
+
+                br = IOUtils.getTextReader(ff.getAbsolutePath().toString());
+                String temp = "";
+                while((temp = br.readLine())!=null){
+                    if(temp.startsWith("#")){
+                        if(start){
+                            bw.write(temp);
+                            bw.newLine();
+                            continue;
+                        }else{
+                            continue;
+                        }
+                    }
+                    bw.write(temp);
+                    bw.newLine();
+                }
+                start = false;
+
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+                Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
+    }
+    public void mergeFiles(String inFile,String inFile2,String outFile){
+        boolean start = true;
+        BufferedReader br = null;
+        BufferedReader br2 = IOUtils.getTextReader(inFile2);
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        String ff = "";
+        int i = 0;
+        try {
+            while((ff = br2.readLine())!=null){
+                br = IOUtils.getTextGzipReader(ff);
+                String temp = "";
+                while((temp = br.readLine())!=null){
+                    if(temp.startsWith("#")){
+                        if(start){
+                            bw.write(temp);
+                            bw.newLine();
+                            continue;
+                        }else{
+                            continue;
+                        }
+                    }
+                    i++;
+                    bw.write(temp);
+                    bw.newLine();
+                }
+                br.close();
+                start = false;
+            }
+            System.out.println("i is: " + i);
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VcfTools.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
+    }
+    
     public static void merge(String inFile,String inFile2, String outFile){
         try {
             TabixReader ref = new TabixReader(inFile);

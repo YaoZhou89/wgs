@@ -70,6 +70,24 @@ public class GenerateScripts {
         if(model.equals("model13")){
             this.check(inFile);
         }
+        if(model.equals("model14")){
+            this.getblastp(inFile,outFile);
+        }
+        if(model.equals("model15")){
+            this.bamIndex(inFile, outFile);
+        }
+        if(model.equals("model16")){
+            getPara(inFile,suffix,outFile);
+        }
+        if(model.equals("model17")){
+            checker(inFile,outFile);
+        }
+        if(model.equals("model18")){
+            checker2file(inFile,outFile);
+        }
+        if(model.equals("model19")){
+            CLUMPPFile(inFile,suffix,outFile);
+        }
     }
     
     public GenerateScripts(String inFile, String outFile, String chrs){
@@ -717,6 +735,278 @@ public class GenerateScripts {
         } catch (IOException ex) {
             Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+    }
+    public void getblastp(String inFile,String outFile){
+        StringBuilder header = new StringBuilder();
+        BufferedWriter bw = IOUtils.getTextWriter(outFile+"/"+1+".script");
+        header.append("#!/bin/bash\n");
+        File in = new File(inFile);
+        File[] f = IOUtils.listRecursiveFiles(in);
+        File[] fs = IOUtils.listFilesEndsWith(f,".fasta");
+        int i = 0;
+        StringBuilder command = new StringBuilder();
+        int t = 1;
+        try {
+            for(File s :fs){
+                i++;
+                String p = s.getAbsolutePath().toString();
+                String[] na = p.split("/");
+                String name = na[na.length-1].split("\\.")[0];
+                if(i % 23 == 0){
+                    t++;
+                    command.append("yhrun -n 1 -c 1 blastp -db /PARA/pp811/BIGDATA-2/data/wheat/orthologs/fasta/orthomcl -query ");
+                    command.append(s.getAbsolutePath().toString());
+                    command.append(" -seg yes -out ");
+                    command.append(outFile+"/"+name+".blastout");
+                    command.append(" -evalue 1e-5 -outfmt 7  -num_threads 1 ");
+                    command.append("\n");
+                    command.append("wait\n");
+                    bw.write(header.toString());
+                    bw.write(command.toString());
+                    bw.flush();
+                    bw.close();
+                    command = new StringBuilder();
+                    bw = IOUtils.getTextWriter(outFile+"/"+t+".script");
+                }else{
+                    command.append("yhrun -n 1 -c 1 blastp -db /PARA/pp811/BIGDATA-2/data/wheat/orthologs/fasta/orthomcl -query ");
+                    command.append(s.getAbsolutePath().toString());
+                    command.append(" -seg yes -out ");
+                    command.append(outFile+"/"+name+".blastout");
+                    command.append(" -evalue 1e-5 -outfmt 7  -num_threads 1 &");
+                    command.append("\n");
+                    command.append("sleep 5s\n");
+                }
+            }
+            bw.write(header.toString());
+            bw.write(command.toString());
+            bw.flush();
+            bw.close();  
+        } catch (IOException ex) {
+            Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+        }   
+    }
+    public void bamIndex(String inFile,String outFile){
+        File f = new File(inFile);
+        File[] fs = IOUtils.listRecursiveFiles(f);
+        File[] bfs = IOUtils.listFilesEndsWith(fs, ".bam");
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        int j = 0;
+        try {
+            for( File subFile : bfs){
+                j++;
+                if(j % 155 == 0){
+                    bw.write("samtools index " + subFile.getAbsolutePath().toString());
+                }else{
+                    bw.write("samtools index " + subFile.getAbsolutePath().toString() + " &");
+                }
+                
+                bw.newLine();
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+                Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+            }
+    }
+    public void getPara(String inFile,String inFile2,String outFile){
+        try {
+            File f1 = new File(inFile);
+            File f2 = new File(inFile2);
+            File[] ff1 = IOUtils.listRecursiveFiles(f1);
+            File[] ff2 = IOUtils.listRecursiveFiles(f2);
+            File[] sf1 = IOUtils.listFilesEndsWith(ff1, ".bam");
+            File[] sf2 = IOUtils.listFilesEndsWith(ff2, ".bam");
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            bw.write("Taxa\tReference\tBamPath\n");
+            for(File subFile : sf1){
+                String[] path = subFile.getAbsolutePath().toString().split("/");
+                String name = path[path.length-1].split("\\.")[0];
+                bw.write(name+"\t");
+                if(name.startsWith("A0")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/a_iwgscV1.fa");
+                    bw.write("\t");
+                }else if(name.startsWith("B0")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/ab_iwgscV1.fa");
+                    bw.write("\t");
+                }else if(name.startsWith("B1")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/ab_iwgscV1.fa");
+                    bw.write("\t");
+                }
+                else if(name.startsWith("D0")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/d_iwgscV1.fa");
+                    bw.write("\t");
+                }else {
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/abd_iwgscV1.fa");
+                    bw.write("\t");
+                }
+                bw.write(subFile.getAbsolutePath().toString());
+                bw.newLine();
+            }
+            for(File subFile : sf2){
+                if(subFile.toString().split(":").length>1) continue;
+                String[] path = subFile.getAbsolutePath().toString().split("/");
+                String name = path[path.length-1].split("\\.")[0];
+                bw.write(name+"\t");
+                if(name.startsWith("A0")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/a_iwgscV1.fa");
+                    bw.write("\t");
+                }else if(name.startsWith("B0")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/ab_iwgscV1.fa");
+                    bw.write("\t");
+                }else if(name.startsWith("B1")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/ab_iwgscV1.fa");
+                    bw.write("\t");
+                }else if(name.startsWith("D0")){
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/d_iwgscV1.fa");
+                    bw.write("\t");
+                }else{
+                    bw.write("/data1/home/yaozhou/data/ref/wheat/genome/num/abd_iwgscV1.fa");
+                    bw.write("\t");
+                }
+                bw.write(subFile.getAbsolutePath().toString());
+                bw.newLine();
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void checker(String inFile, String outFile){
+        File in = new File(inFile);
+        Set <String> all = new HashSet();
+        for ( int i = 1; i < 10 ; i++){
+           all.add("A00"+i);
+           all.add("B00"+i);
+           all.add("TW00"+i);
+           all.add("D00"+i);
+        }
+        for ( int i = 10; i < 31 ; i++){
+            all.add("A0"+i);
+            all.add("B0"+i);
+            all.add("TW0"+i);
+            all.add("D0"+i);
+        }
+        for ( int i = 31; i < 55 ; i++){
+            all.add("A0"+i);
+            all.add("B0"+i);
+            all.add("TW0"+i);
+        }
+        for ( int i = 55; i < 92 ; i++){
+            all.add("A0"+i);
+            all.add("B0"+i);
+        }
+        for ( int i = 92; i < 99 ; i++){
+            all.add("B0"+i);
+        }
+        for ( int i = 100; i < 126; i++){
+            all.add("B"+i);
+        }
+        Set <String> fbam = new HashSet();
+        Set <String> fbai = new HashSet();
+        File[] subf = IOUtils.listRecursiveFiles(in);
+        File[] bam = IOUtils.listFilesEndsWith(subf, ".bam");
+        File[] bai = IOUtils.listFilesEndsWith(subf, "bai");
+        for (File ff : bam){
+            String[] nameS = ff.getAbsoluteFile().toString().split("/");
+            String name = nameS[nameS.length-1].split("\\.")[0];
+            fbam.add(name);
+        }
+        for (File ff : bai){
+            String[] nameS = ff.getAbsoluteFile().toString().split("/");
+            String name = nameS[nameS.length-1].split("\\.")[0];
+            fbai.add(name);
+        }
+//        for(String a : fbai){
+//            System.out.println(a);
+//        }
+        BufferedWriter bw = IOUtils.getTextWriter(outFile);
+        try{
+            for(String a : all){
+//                System.out.println(a);
+                if(fbam.add(a)){
+                    bw.write("bam is missing: "+ a);
+                    bw.newLine();
+                }
+                if(fbai.add(a)){
+                    bw.write("bai is missing: " + a);
+                    bw.newLine();
+                }
+            }
+            bw.flush();
+            bw.close();
+        }catch (Exception e){
+            
+        }
+    }
+    
+    public void checker2file(String inFile,String outFile){
+        try {
+            BufferedReader br = IOUtils.getTextGzipReader(inFile);
+            BufferedReader br1 = IOUtils.getTextGzipReader(outFile);
+            String[] te = null;
+            List< String[]> geno = new ArrayList();
+            String temp = "";
+            int s1 = 0, s2 = 0;
+            String[] taxa = null;
+            while((temp = br.readLine())!=null){
+                if(temp.startsWith("#C")) taxa = temp.split("\t");
+                if(temp.startsWith("#")) continue;
+                s1++;
+                te = temp.split("\t");
+                String[] ge = new String[te.length-9];
+                for(int i = 9; i < te.length ; i++){
+                    ge[i-9] = te[i];
+                }
+                geno.add(ge);
+            }
+            System.out.println("SNPs in file1 is: " + s1);
+            int diff = 0;
+            while((temp = br1.readLine())!=null){
+                if(temp.startsWith("#")) continue;
+               
+                te = temp.split("\t");
+                String[] ge = new String[te.length-9];
+                for(int i = 9; i < te.length ; i++){
+                    if(geno.get(s2)[i-9].startsWith("0/0")){
+                        if(te[i].startsWith("1")) {
+                            diff++;
+                            System.out.println(taxa[i]);
+                            System.out.println(geno.get(s2)[i-9]);
+                            System.out.println(te[1]+"\t"+te[i]);
+                            break;
+                        }
+                    }else if(geno.get(s2)[i-9].startsWith("1/1")){
+                        if(te[i].startsWith("0/0")) diff++;
+                    }
+                }
+                 s2++;
+            }
+            System.out.println("SNPs in file2 is: " + s2);
+            System.out.println("Different sites number are : " + diff);
+            
+        } catch (IOException ex) {
+            Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void CLUMPPFile(String inFile, String suffix,String outFile){
+        try {
+            BufferedReader br1 = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = "";
+            while ((temp = br1.readLine())!=null){
+                if(temp.startsWith("K")){
+                    bw.write("K "+suffix);
+                    bw.newLine();
+                }else{
+                    bw.write(temp);
+                    bw.newLine();
+                }
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(GenerateScripts.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }

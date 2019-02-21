@@ -9,6 +9,5 @@ package io;
  *
  * @author yaozhou
  */
-public class StringType {
-    
-}
+
+

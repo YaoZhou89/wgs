@@ -26,7 +26,64 @@ public class Genome {
     public Genome(){
         
     }
-    
+    private void read(String inFile){
+        
+        try {
+            BufferedReader br = null;
+            if(inFile.endsWith(".gz")){
+                br = IOUtils.getTextGzipReader(inFile);
+            }else {
+                br = IOUtils.getTextReader(inFile);
+            }
+            String temp = "";
+            String chrName = "";
+            StringBuilder fasta  = new StringBuilder();
+            boolean first = true;
+            while ((temp = br.readLine())!=null){
+                if(temp.startsWith(">")){
+                    System.out.println(temp);
+                    if(!first){
+                       seq.put(chrName,fasta.toString());
+                    }
+                    chrName = temp;
+                    fasta = new StringBuilder();
+                    first = false;
+                }else{
+                    fasta.append(temp);
+                    fasta.append("\n");
+                }
+            }
+            seq.put(chrName,fasta.toString());
+        } catch (IOException ex) {
+            Logger.getLogger(Genome.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    private void write(String outFile){
+        try {
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            for(int i = 1; i< 13;i ++){
+                String chr = ">Chr"+i;
+                System.out.println(chr);
+                bw.write(chr);
+                bw.newLine();
+                bw.write(seq.get(chr));
+            }
+            bw.write(">ChrUn");
+            bw.newLine();
+            bw.write(seq.get(">ChrUn"));
+            bw.write(">Chl");
+            bw.newLine();
+            bw.write(seq.get(">Chl"));
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+                Logger.getLogger(Genome.class.getName()).log(Level.SEVERE, null, ex);
+            }
+    }
+    public void getSort(String inFile, String outFile){
+        read(inFile);
+        write(outFile);
+    }
     public void readByChromosome(String inFile,int a, int b){
         try {
             BufferedReader br = IOUtils.getTextReader(inFile);

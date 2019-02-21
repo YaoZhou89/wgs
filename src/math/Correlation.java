@@ -84,7 +84,7 @@ public class Correlation {
             else{
                 cor[i] = cc.correlation(getRow(c,0), getRow(c,1));
             }
-            cor[i] = cor[i]*cor[i];
+            cor[i] = cor[i]*cor[i];// Rsquare
         }
         return(cor);
     }

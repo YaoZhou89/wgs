@@ -7,11 +7,16 @@ package wheatwgs;
 
 import GO.GO;
 import bed.bed;
+import fasta.Fasta;
 import fasta.Genome;
+import fasta.MAF;
 import fasta.SubstractFromFasta;
 import fasta.Transform;
 import fasta.contig;
 import fastq.Fastq;
+import format.Blast;
+import format.Com;
+import genome.GenomeDistribute;
 import gff.gff3;
 import gff.modifyGTF;
 import gff.splitByChr;
@@ -22,14 +27,17 @@ import math.gwasResult;
 import math.singleRegion;
 import script.GenerateScripts;
 import test.test;
+import text.FileSub;
 import text.Summary;
 import vcf.Check;
 import vcf.CompareVCF;
 import vcf.Frequence;
 import vcf.GeneticDivergency;
 import vcf.IBD;
+import vcf.MergeVmapI;
 import vcf.ParallelVCF;
 import vcf.VcfTools;
+import static vcf.VcfTools.merge;
 import vcf.vcf;
 
 /**
@@ -270,6 +278,18 @@ public class main {
                 new Genome().getChrInfo(inFile, outFile);
             }else if (type.equals("bwa")){
                 new Genome().getBWAformat(inFile,outFile,a);
+            }else if (type.equals("genomeSort")){
+                new Genome().getSort(inFile, outFile);
+            }else if(type.equals("changeName")){
+                new Transform().changeName(inFile, outFile, names);
+            }else if(type.equals("splitFasta")){
+                new Fasta().readFasta(inFile, suffix, windowSize);
+            }else if (type.equals("removeDup")){
+                new Fasta().removeDup(inFile, outFile);
+            }else if(type.equals("getGenes")){
+                new Fasta().getGenes(inFile, inFile2, outFile);
+            }else if (type.equals("splitABD")){
+                new Fasta().splitABD(inFile, outFile);
             }
         }else if (model.equals("fastq")){
             new Fastq().changeName(inFile, outFile);
@@ -299,8 +319,34 @@ public class main {
                 new bed().getRegion(inFile, outFile);
             }else if (type.equals("splitBychr")){
                 new bed().splitByChr(inFile, outFile);
+            }else if (type.equals("mummer2bed")){
+                new bed().mummer2bed(inFile, outFile, names, windowSize);
+            }else if (type.equals("repeat2bed")){
+                new bed().repeat2bed(inFile, outFile, windowSize);
+            }else if (type.equals("gene2bed")){
+                new bed().gene2bed(inFile, outFile, windowSize);
             }
            
+        }
+        if(model.equals("genome")){
+            if(type.equals("byChr")){
+                new GenomeDistribute(inFile,outFile,true);
+            }
+        }
+        if(model.equals("VmapI")){
+            if(type.equals("mergeBarley")){
+                new MergeVmapI().mergeBarley(inFile, inFile2, outFile);
+            }else if (type.equals("getS")){
+                new FileSub().getS(inFile, outFile);
+            }else if(type.equals("getSet")){
+                new FileSub().getSet(inFile, outFile);
+            }
+            
+        }
+        if(model.equals("MAF")){
+            if(type.equals("getSeq")){
+                new MAF().getSeq(inFile,outFile);
+            }
         }
         if(model.equals("GO")){
             new GO().toGO(inFile, keyFileName, outFile);
@@ -311,7 +357,6 @@ public class main {
             }else if (type.equals("emmax")){
                 new gwasResult().thinEMMAX(inFile, outFile, maxSD, threshold);
             }
-            
         }
         if(model.equals("vcf")){
             // Segeragation test
@@ -371,6 +416,10 @@ public class main {
                 new Check().checkAll(inFile, outFile);
             }else if (type.equals("changeHeader")){
                 new VcfTools().changeHeader(inFile, outFile, suffix);
+            }else if(type.equals("mergeAll")){
+                new VcfTools().mergeAll(inFile, outFile, suffix);
+            }else if (type.equals("mergeFiles")){
+                new VcfTools().mergeFiles(inFile, inFile2, outFile);
             }
             else{
                 new VcfTools(inFile,outFile,type,maxSD);
@@ -408,6 +457,11 @@ public class main {
             }
             
         }
+        if(model.equals("blast")){
+            if(type.equals("changeBlastp")){
+                new Blast().changeBlastp(inFile,outFile);
+            }
+        }
         if(model.equals("PI")){
             if(type.equals("sitePi")){
                 new Pi().getSitePi(inFile, inFile2, outFile);
@@ -418,6 +472,11 @@ public class main {
         if(model.equals("correlation")){
             if (type.equals("siteCor")){
                 new Correlation().siteCor(inFile, outFile, size);
+            }
+        }
+        if(model.equals("compare")){
+            if(type.equals("getSame")){
+                new Com().getSame(inFile, inFile2, outFile);
             }
         }
         long endTime = System.currentTimeMillis();

@@ -236,7 +236,7 @@ public class Check {
             }
             bw.flush();
             bw.close();
-            System.out.println("Outiler numer is: "+outlier);
+            System.out.println("Outiler number is: "+outlier);
         } catch (IOException ex) {
             Logger.getLogger(Check.class.getName()).log(Level.SEVERE, null, ex);
         }

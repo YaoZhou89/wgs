@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -156,5 +158,134 @@ public class bed {
             Logger.getLogger(bed.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+    public void mummer2bed(String inFile,String outFile,String type,int len){
+        try {
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = "";
+            String[] te = null;
+            int sum = 0;
+            boolean isSNP = true;
+            int start = 0;
+            int pre = 0;
+            boolean f = true;
+            while ((temp = br.readLine())!=null){
+                if(temp.equals("")) continue;
+                if(!isStartWithNumber(temp)) continue;
+                te = temp.split("\t");
+                if(te[1].equals("\\.") | te[2].equals("\\.")) isSNP = false;
+                if(type.equals("SNP")){
+                    if(!isSNP) continue;
+                }else{
+                    if(isSNP) continue;
+                }
+                int pos = Integer.parseInt(te[0]);
+                while((pre+1)*len < pos ){
+                    if(f){
+                        bw.write(te[10] + "\t" + pre*len + "\t" + (pre+1)*len + "\t" + 0);
+                        bw.newLine();
+                        pre++;
+                    }else{
+                        bw.write(te[10] + "\t" + pre*len + "\t" + (pre+1)*len + "\t" + sum);
+                        bw.newLine();
+                        sum = 0;
+                        f = true;
+                        pre++;
+                    }
+                }
+                f = false;
+                sum++;
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(bed.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void repeat2bed(String inFile,String outFile,int len){
+        try {
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = "";
+            String[] te = null;
+            int sum = 0;
+            boolean isSNP = true;
+            int start = 0;
+            int pre = 0;
+            boolean f = true;
+            while ((temp = br.readLine())!=null){
+                if(temp.equals("")) continue;
+                te = temp.split("\t");                
+                int pos = Integer.parseInt(te[3]);
+                while((pre+1)*len < pos ){
+                    if(f){
+                        bw.write(te[0] + "\t" + pre*len + "\t" + (pre+1)*len + "\t" + 0);
+                        bw.newLine();
+                        pre++;
+                    }else{
+                        if(sum>len) sum = len;
+                        bw.write(te[0] + "\t" + pre*len + "\t" + (pre+1)*len + "\t" + sum*1.0/len);
+                        bw.newLine();
+                        sum = 0;
+                        f = true;
+                        pre++;
+                    }
+                }
+                f = false;
+                int a = Integer.parseInt(te[4]);
+                int b = Integer.parseInt(te[3]);
+                if (a > (pre+1)*len ) a = (pre+1)*len;
+                sum  = sum + (a-b);
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(bed.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void gene2bed(String inFile,String outFile,int len){
+        try {
+            BufferedReader br = IOUtils.getTextReader(inFile);
+            BufferedWriter bw = IOUtils.getTextWriter(outFile);
+            String temp = "";
+            String[] te = null;
+            int sum = 0;
+            int start = 0;
+            int pre = 0;
+            boolean f = true;
+            while ((temp = br.readLine())!=null){
+                if(temp.equals("")) continue;
+                te = temp.split("\t");                
+                int pos = Integer.parseInt(te[3]);
+                while((pre+1)*len < pos ){
+                    if(f){
+                        bw.write(te[0] + "\t" + pre*len + "\t" + (pre+1)*len + "\t" + 0);
+                        bw.newLine();
+                        pre++;
+                    }else{
+                        if(sum>len) sum = len;
+                        bw.write(te[0] + "\t" + pre*len + "\t" + (pre+1)*len + "\t" + sum);
+                        bw.newLine();
+                        sum = 0;
+                        f = true;
+                        pre++;
+                    }
+                }
+                f = false;
+                 sum++;
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException ex) {
+            Logger.getLogger(bed.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public static boolean isStartWithNumber(String str) {
+        Pattern pattern = Pattern.compile("[0-9]*");
+        Matcher isNum = pattern.matcher(str.charAt(0)+"");
+        if (!isNum.matches()) {
+            return false;
+        }
+        return true;
+    }
 }

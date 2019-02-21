@@ -153,11 +153,11 @@ public class Pi {
                 te = temp.split("\t");
                 int pos = Integer.parseInt(te[1]);
                 if(te[0].equals(chr)){
-                    while(pos > (i+1)*1000000){
+                    while(pos > (i+1)*10000){
                         if(num==0){
-                            bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ 0);
+                            bw.write(chr.toString()+"\t"+i*10000 +"\t" + (i+1)*10000 + "\t"+ 0);
                         }else{
-                            bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ sum/num);
+                            bw.write(chr.toString()+"\t"+i*10000 +"\t" + (i+1)*10000 + "\t"+ sum/num);
                         }
                         
                         bw.newLine();
@@ -165,7 +165,7 @@ public class Pi {
                         i++;
                         num = 0;
                     }
-                        sum += Double.parseDouble(te[3]);
+                        sum += Double.parseDouble(te[2]);
                         num++;
                     
                 }else{
@@ -173,11 +173,11 @@ public class Pi {
                     sum = 0;
                     num = 0;
                     i = 0;
-                    while(pos > (i+1)*1000000){
+                    while(pos > (i+1)*10000){
                         if(num==0){
-                            bw.write(chr.toString() + "\t" + i*1000000 + "\t" + (i+1)*1000000 + "\t"+ 0);
+                            bw.write(chr.toString() + "\t" + i*10000 + "\t" + (i+1)*10000 + "\t"+ 0);
                         }else{
-                            bw.write(chr.toString() + "\t" + i*1000000 + "\t" + (i+1)*1000000 + "\t"+ sum/num);
+                            bw.write(chr.toString() + "\t" + i*10000 + "\t" + (i+1)*10000 + "\t"+ sum/num);
                         }                        
                         bw.newLine();
                         sum = 0;
@@ -185,16 +185,16 @@ public class Pi {
                         num = 0;
                     }
                     
-                        sum += Double.parseDouble(te[3]);
+                        sum += Double.parseDouble(te[2]);
                         num++;
                     
                 }
                 
             }
             if(num==0){
-                bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ 0);
+                bw.write(chr.toString()+"\t"+i*10000 +"\t" + (i+1)*10000 + "\t"+ 0);
             }else{
-                bw.write(chr.toString()+"\t"+i*1000000 +"\t" + (i+1)*1000000 + "\t"+ sum/num);
+                bw.write(chr.toString()+"\t"+i*10000 +"\t" + (i+1)*10000 + "\t"+ sum/num);
             }
             bw.newLine();
             bw.flush();
